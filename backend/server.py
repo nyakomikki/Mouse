@@ -142,255 +142,242 @@ def _px(color_idx_grid, palette, w=16, h=16, scale=2):
 
 
 def _build_defaults():
-    """Create default sprites. The zombie-blob morphs between six per-state forms."""
+    """Create default sprites. The puppy morphs between ten per-state forms."""
     sprites = []
 
-    # Shared zombie-blob palette
-    pal_b = {
+    # Shared puppy palette
+    pal_p = {
         ' ': (0, 0, 0, 0),
-        'K': (16, 36, 10, 255),       # outline near-black green
-        'G': (90, 140, 70, 255),      # main green
-        'L': (140, 180, 110, 255),    # highlight
-        'D': (60, 100, 45, 255),      # shadow
-        'W': (245, 245, 245, 255),    # eye white
-        'B': (18, 18, 18, 255),       # pupil
-        'E': (220, 38, 38, 255),      # red pupil / eye highlight
-        'R': (110, 26, 26, 255),      # wound dark
-        'S': (239, 68, 68, 255),      # blood bright
+        'K': (55, 32, 18, 255),       # dark brown outline
+        'B': (215, 170, 110, 255),    # tan body
+        'L': (240, 210, 160, 255),    # light tan highlight
+        'D': (250, 235, 210, 255),    # belly / cream
+        'N': (30, 25, 25, 255),       # nose
+        'W': (250, 250, 250, 255),    # eye white
+        'E': (15, 15, 15, 255),       # pupil
+        'T': (240, 130, 140, 255),    # tongue pink
+        'R': (220, 38, 38, 255),      # collar red
+        'S': (245, 235, 200, 255),    # bone white
+        'X': (140, 120, 80, 255),     # bone shadow
+        'Z': (200, 200, 255, 255),    # zzz sleep indicator
     }
 
-    def blob(rows):
-        # ensure 16 columns per row via natural padding in _px
-        return _px(rows, pal_b, 16, 16, 2)
+    def pup(rows):
+        return _px(rows, pal_p, 16, 16, 2)
 
-    # ---------- IDLE: breathing blob with a single watching eye ----------
+    # ---------- IDLE: Puppy chews the bone (mouth opens/closes) ----------
+    # Puppy is small on the LEFT side of sprite with mouth at right edge.
+    # SpriteFollower will override offset at idle to place the sprite
+    # such that the mouth overlaps the bone-cursor.
     idle_a = [
         "                ",
         "                ",
-        "     KKKKKK     ",
-        "    KLLLLLLK    ",
-        "   KLGGGGGGGK   ",
-        "   KLGWWGGLGK   ",
-        "   KGLWBGGGGK   ",
-        "   KGLWGGGGLK   ",
-        "   KGGGGGGGGK   ",
-        "    KGGGGGGK    ",
-        "     KKKKKK     ",
-        "      K  K      ",
-        "       KK       ",
         "                ",
         "                ",
-        "                ",
-    ]
-    idle_b = [
-        "                ",
-        "     KKKKKK     ",
-        "    KLLLLLLK    ",
-        "   KLGGGGGGGK   ",
-        "   KLGWWGGLGK   ",
-        "   KGLWBGGGGK   ",
-        "   KGLWGGGGLK   ",
-        "   KGGGGGGGGK   ",
-        "   KGGGGGGGGK   ",
-        "    KGGGGGGK    ",
-        "     KKKKKK     ",
-        "       KK       ",
-        "                ",
-        "                ",
-        "                ",
+        "   KKK          ",
+        "  KBBBK         ",
+        "  KBEBBKKK      ",
+        "  KBBBBBBBK     ",
+        "   KBBBBBNK     ",
+        "   KBBBBKKK     ",
+        "   KBDDBBK      ",
+        "   KBDDBBK      ",
+        "   KBBBBBK      ",
+        "    KK KK       ",
+        "    K   K       ",
         "                ",
     ]
-    idle_c = [
+    idle_b = [  # mouth slightly open
         "                ",
         "                ",
         "                ",
-        "    KKKKKKKK    ",
-        "   KLLLLLLLGK   ",
-        "  KLGGWWGGLGGK  ",
-        "  KGGWBGGGGLGK  ",
-        "  KGGWGGGGGGGK  ",
-        "   KKGGGGGGKK   ",
-        "     KKKKKK     ",
-        "      K  K      ",
-        "      K  K      ",
-        "       KK       ",
+        "                ",
+        "   KKK          ",
+        "  KBBBK         ",
+        "  KBEBBKKK      ",
+        "  KBBBBBBBKK    ",
+        "   KBBBBBNKK    ",
+        "   KBBBBKTK     ",
+        "   KBDDBBK      ",
+        "   KBDDBBK      ",
+        "   KBBBBBK      ",
+        "    KK KK       ",
+        "    K   K       ",
+        "                ",
+    ]
+    idle_c = [  # chomp — mouth wide
         "                ",
         "                ",
+        "                ",
+        "                ",
+        "   KKK          ",
+        "  KBBBK         ",
+        "  KBEBBKK       ",
+        "  KBBBBBBBKK    ",
+        "   KBBBBBBBK    ",
+        "   KBBBBTTK     ",
+        "   KBDDKKKK     ",
+        "   KBDDBBK      ",
+        "   KBBBBBK      ",
+        "    KK KK       ",
+        "    K   K       ",
         "                ",
     ]
     sprites.append(Sprite(
-        id="builtin-blob-idle", name="Blob · Idle",
-        fps=4, frames=[SpriteFrame(data=blob(f)) for f in [idle_a, idle_b, idle_c, idle_b]],
+        id="builtin-blob-idle", name="Pup \u00b7 Chewing",
+        fps=4, frames=[SpriteFrame(data=pup(f)) for f in [idle_a, idle_b, idle_c, idle_b]],
         tags=["idle"], built_in=True, width=32, height=32,
     ))
 
-    # ---------- MOVE: stretched blob with motion trail streaks ----------
-    move_a = [
+    # ---------- MOVE: Puppy chases the bone (run cycle) ----------
+    run_a = [
         "                ",
         "                ",
-        "                ",
-        "           KKK  ",
-        "  K      KKGGGK ",
-        "   K    KGLLGGK ",
-        " KK  KKKGLWBGGK ",
-        "K K KGGGGGWGGGK ",
-        "     KGGGGGGGK  ",
-        "   KKK KKGGGGK  ",
-        "  K  KKK KKKK   ",
-        "                ",
-        "                ",
-        "                ",
+        "     KKK        ",
+        "    KBBBK       ",
+        "   KBEBBKKKK    ",
+        "   KBBBBBBBBK   ",
+        "    KBBBBBBNK   ",
+        "     KBBBBKK    ",
+        "    KBBBBBBBK   ",
+        "   KBBDDDDBBBK  ",
+        "   KBBBBBBBBBK  ",
+        "    KKKKKKKKK   ",
+        "   KK KK KK K   ",
+        "  K   K  K   K  ",
         "                ",
         "                ",
     ]
-    move_b = [
+    run_b = [
         "                ",
         "                ",
-        "                ",
-        "           KKKK ",
-        "    K   KKKGLGK ",
-        " KK  KKKGLWWGGK ",
-        "K K KGGGGWBGGGK ",
-        "  KKKGGGGGGGGGK ",
-        "   K KKKGGGGGK  ",
-        "  KK   KKKKKK   ",
-        "                ",
-        "                ",
-        "                ",
-        "                ",
-        "                ",
+        "     KKK        ",
+        "    KBBBK       ",
+        "   KBEBBKKKK    ",
+        "   KBBBBBBBBK   ",
+        "    KBBBBBBNK   ",
+        "     KBBBBKK    ",
+        "    KBBBBBBBK   ",
+        "   KBBDDDDBBBK  ",
+        "   KBBBBBBBBBK  ",
+        "    KKKKKKKKK   ",
+        "    K  KK KK    ",
+        "   K K  K   K   ",
+        "    K        K  ",
         "                ",
     ]
     sprites.append(Sprite(
-        id="builtin-blob-move", name="Blob · Move",
-        fps=8, frames=[SpriteFrame(data=blob(f)) for f in [move_a, move_b]],
+        id="builtin-blob-move", name="Pup \u00b7 Chase",
+        fps=10, frames=[SpriteFrame(data=pup(f)) for f in [run_a, run_b]],
         tags=["move"], built_in=True, width=32, height=32,
     ))
 
-    # ---------- DRAG: clawed blob with grasping tentacles ----------
+    # ---------- DRAG: Puppy tugs / pulls backward ----------
     drag_a = [
-        "   K        K   ",
-        "   KK      KK   ",
-        "    KK    KK    ",
-        "     KGGGGGK    ",
-        "    KGLLLLLGK   ",
-        "    KGLWWLGLK   ",
-        "   KKGLWBGLGK   ",
-        "   KGGGWEGGGK   ",
-        "   KGGGGGGGGK   ",
-        "    KGGGGGGK    ",
-        "   KKKGGGGKKK   ",
-        "  KK K KK K KK  ",
-        "  K  K  K  K K  ",
-        " K   K      K K ",
         "                ",
+        "                ",
+        "                ",
+        "   KKK          ",
+        "  KBBBK         ",
+        "  KBEBBKKK      ",
+        "  KBBBBBBBKK    ",
+        "   KBBBBBBNK    ",
+        "  KKBBBBBBBK    ",
+        " KBBBDDDBBBBK   ",
+        " KBBDDDDBBBBK   ",
+        "  KKKKKKKKKK    ",
+        "  K K KK K K    ",
+        " KK  K  K  KK   ",
+        "  K         K   ",
         "                ",
     ]
     drag_b = [
-        "    K      K    ",
-        "   KK      KK   ",
-        "    KK    KK    ",
-        "     KGGGGGK    ",
-        "    KGLLLLLGK   ",
-        "    KGLWWLGLK   ",
-        "   KKGLWBGLGK   ",
-        "   KGGGWEGGGK   ",
-        "   KGGGGGGGGK   ",
-        "   KKKGGGGGKKK  ",
-        "  KK KGGGGK KK  ",
-        "  K   KKKK   K  ",
-        " K  K K  K K  K ",
-        " K K   KK   K K ",
-        "K                ",
+        "                ",
+        "                ",
+        "                ",
+        "   KKK          ",
+        "  KBBBK         ",
+        "  KBEBBKKK      ",
+        "  KBBBBBBBKK    ",
+        "  KKBBBBBBNK    ",
+        " KBBBBBBBBBK    ",
+        " KBBBDDDBBBBK   ",
+        " KBBDDDDBBBBK   ",
+        "  KKKKKKKKKK    ",
+        "   K K KK K     ",
+        "    K   K  K    ",
+        "   KK  KK   K   ",
         "                ",
     ]
     sprites.append(Sprite(
-        id="builtin-blob-drag", name="Blob · Drag",
-        fps=6, frames=[SpriteFrame(data=blob(f)) for f in [drag_a, drag_b]],
+        id="builtin-blob-drag", name="Pup \u00b7 Tug",
+        fps=6, frames=[SpriteFrame(data=pup(f)) for f in [drag_a, drag_b]],
         tags=["drag"], built_in=True, width=32, height=32,
     ))
 
-    # ---------- RESIZE: diagonal stretched blob (NW-SE) ----------
+    # ---------- RESIZE: Puppy stretches ----------
     resize_a = [
-        "KK              ",
-        "KKK             ",
-        " KLK            ",
-        " KLLK           ",
-        "  KGLK          ",
-        "   KGLKK        ",
-        "    KGGGKK      ",
-        "    KGLWBGK     ",
-        "     KGWEGGK    ",
-        "      KGGGGKK   ",
-        "       KGGGLK   ",
-        "        KGGLLK  ",
-        "         KKGLK  ",
-        "           KKK  ",
-        "            KKK ",
-        "             KK ",
+        "                ",
+        "                ",
+        "  KKK           ",
+        " KBBBK       K  ",
+        " KBEBBKKKKKKBBK ",
+        " KBBBBBBBBBBBBNK",
+        " KBBBBBBBBBBBBKK",
+        "  KBBDDDDDBBKK  ",
+        "  KBBDDDDDBBK   ",
+        "   KKKKKKKKK    ",
+        "   K  KK  K     ",
+        "   K   K  K     ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
     ]
     resize_b = [
-        "K               ",
-        "KK              ",
-        " KK             ",
-        " KLLK           ",
-        "  KLLK          ",
-        "   KGLLK        ",
-        "    KGGLKK      ",
-        "    KGLWWGK     ",
-        "     KGGBEGK    ",
-        "      KKGGGLK   ",
-        "        KGGGLK  ",
-        "        KKGGLK  ",
-        "          KKGLK ",
-        "           KKKK ",
-        "             KK ",
-        "              K ",
+        "                ",
+        "                ",
+        "  KKK           ",
+        " KBBBK        K ",
+        " KBEBBKKKKKKKBBK",
+        " KBBBBBBBBBBBBBN",
+        " KBBBBBBBBBBBBKK",
+        "  KBBDDDDDDBBKK ",
+        "  KBBDDDDDDBBK  ",
+        "   KKKKKKKKKK   ",
+        "   K  KKK  K    ",
+        "   K    K   K   ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
     ]
     sprites.append(Sprite(
-        id="builtin-blob-resize", name="Blob · Resize",
-        fps=5, frames=[SpriteFrame(data=blob(f)) for f in [resize_a, resize_b]],
+        id="builtin-blob-resize", name="Pup \u00b7 Stretch",
+        fps=5, frames=[SpriteFrame(data=pup(f)) for f in [resize_a, resize_b]],
         tags=["resize"], built_in=True, width=32, height=32,
     ))
 
-    # ---------- MINIMIZE: flattening melting blob ----------
-    mini_a = [
+    # ---------- MINIMIZE: Puppy lies down ----------
+    minimize_a = [
         "                ",
         "                ",
         "                ",
         "                ",
         "                ",
         "                ",
-        "     KKKKKK     ",
-        "    KLLLLLLK    ",
-        "   KGLWWWGGGK   ",
-        "  KGGWBGWBGGGK  ",
-        "  KGGGGGGGGGGK  ",
-        "   KKGGGGGGKK   ",
-        "     KKKKKK     ",
-        "     K    K     ",
-        "      K  K      ",
-        "       KK       ",
+        "                ",
+        "   KKK          ",
+        "  KBBBK         ",
+        "  KBEBBKKKKK    ",
+        "  KBBBBBBBBBBK  ",
+        " KBBDDDDBBBBBNK ",
+        " KBBDDDDBBBBBK  ",
+        "  KKKKKKKKKKK   ",
+        "                ",
+        "                ",
     ]
-    mini_b = [
-        "                ",
-        "                ",
-        "                ",
-        "                ",
-        "                ",
-        "                ",
-        "                ",
-        "    KKKKKKKK    ",
-        "   KLLLLLLLGK   ",
-        "  KGGWBGGWBGGK  ",
-        "  KKGGGGGGGGKK  ",
-        "    KKKKKKKK    ",
-        "    K  K  K     ",
-        "     K K  K     ",
-        "      K   K     ",
-        "       K  K     ",
-    ]
-    mini_c = [
+    minimize_b = [
         "                ",
         "                ",
         "                ",
@@ -399,251 +386,233 @@ def _build_defaults():
         "                ",
         "                ",
         "                ",
+        "   KKK          ",
+        "  KBBBKKKKK     ",
+        " KBKKKBBBBBBK   ",
+        " KBEBBBBBBBBNK  ",
+        " KBBBBBBBBBBK   ",
+        "  KKKKKKKKKK    ",
         "                ",
-        "   KKKKKKKKKK   ",
-        "  KGGGWBGWBGGK  ",
-        "   KKKKKKKKKK   ",
-        "   K K K K KK   ",
-        "    K K K  K    ",
-        "     K   K  K   ",
-        "      K   K     ",
+        "                ",
     ]
     sprites.append(Sprite(
-        id="builtin-blob-minimize", name="Blob · Minimize",
-        fps=8, frames=[SpriteFrame(data=blob(f)) for f in [mini_a, mini_b, mini_c]],
+        id="builtin-blob-minimize", name="Pup \u00b7 Lie Down",
+        fps=6, frames=[SpriteFrame(data=pup(f)) for f in [minimize_a, minimize_b]],
         tags=["minimize"], built_in=True, width=32, height=32,
     ))
 
-    # ---------- CLOSE: explosion splatter (goo bits flying out) ----------
+    # ---------- CLOSE: Puppy barks / alert burst ----------
     close_a = [
-        "K              K",
-        " K    KKKK    K ",
-        "     KLLLLK     ",
-        "    KLGGGGGK    ",
-        "K  KGGSRSGGLGK K",
-        "  KGGRSSSRGGGGK ",
-        " KGGGSRRSSSGGGK ",
-        "KGGSREERESSGGGK ",
-        "KGGSRRRRRSSSGGK ",
-        " KGGGSSSSRSGGK  ",
-        "  KGGGGGGGGGK   ",
-        " KKKGGGGGGGKK   ",
-        "K  KKKKKKKKK  K ",
-        " K  K  K  K  K  ",
-        "K K        K  K ",
-        "   K          K ",
+        "  K         K   ",
+        "   K       K    ",
+        "  KKK  K        ",
+        " KBBBK K K      ",
+        " KBEBBK         ",
+        " KBBBBBKKK      ",
+        "  KBBBBBBBK     ",
+        "   KBBBBBNKK    ",
+        "    KBBTTTTK    ",
+        "    KBBBBBBK    ",
+        "    KBDDBBBK    ",
+        "    KBDDBBK     ",
+        "    KBBBBBK     ",
+        "     KK KK      ",
+        "     K   K      ",
+        "                ",
     ]
     close_b = [
-        "K   K      K   K",
-        " K K        K K ",
-        "K   KKKKKKKK   K",
-        "    KLLLLLLK    ",
-        "   KGGSSRSSGGK  ",
-        "  KGGRREEERRGGK ",
-        "  KGGRESSERRGGK ",
-        " KGGSSRSSRSSGGK ",
-        " KGGGRRSSRRRGGK ",
-        "  KGGGSSSSSGGK  ",
-        "   KKGGGGGGKK   ",
-        " KK KKKKKKKK KK ",
-        "K K K K  K K K K",
-        "     K    K     ",
-        "K  K        K  K",
-        " K            K ",
+        " K    K   K    K",
+        "  K  K  K       ",
+        "   KKK K KK     ",
+        "  KBBBK         ",
+        "  KBEBBKKKK K K ",
+        "  KBBBBBBBK     ",
+        "   KBBBBBBBK    ",
+        "    KBBBBBNKK   ",
+        "    KBBTTTTTK   ",
+        "    KBBBBBBBK   ",
+        "    KBDDBBBK    ",
+        "    KBDDBBK     ",
+        "    KBBBBBK     ",
+        "     KK KK      ",
+        "     K   K      ",
+        "                ",
     ]
     sprites.append(Sprite(
-        id="builtin-blob-close", name="Blob · Close",
-        fps=7, frames=[SpriteFrame(data=blob(f)) for f in [close_a, close_b]],
+        id="builtin-blob-close", name="Pup \u00b7 Bark",
+        fps=7, frames=[SpriteFrame(data=pup(f)) for f in [close_a, close_b]],
         tags=["close"], built_in=True, width=32, height=32,
     ))
 
-    # ---------- MUSIC: bouncing blob with a hovering music note ----------
+    # ---------- MUSIC: Puppy bops to the beat ----------
     music_a = [
-        "       K        ",
-        "      KK        ",
-        "     KKK        ",
+        "      K         ",
         "     KK         ",
+        "    KKK         ",
+        "   KKK          ",
+        "  KBBBK         ",
+        "  KBEBBKKK      ",
+        "  KBBBBBBBK     ",
+        "   KBBBBBNK     ",
+        "    KBBBKK      ",
+        "    KBBBBK      ",
+        "   KBDDBBBK     ",
+        "   KBDDBBBK     ",
+        "   KBBBBBK      ",
+        "    KK KK       ",
+        "    K   K       ",
         "                ",
-        "     KKKKKK     ",
-        "    KLLLLLLK    ",
-        "   KLGGGGGGGK   ",
-        "   KLGWWGGLGK   ",
-        "   KGLWBGGGGK   ",
-        "   KGLWGGGGLK   ",
-        "   KGGGGGGGGK   ",
-        "    KGGGGGGK    ",
-        "     KKKKKK     ",
-        "      K  K      ",
-        "       KK       ",
     ]
     music_b = [
-        "                ",
-        "        K       ",
-        "       KK       ",
-        "      KKK       ",
-        "      KK        ",
-        "                ",
-        "     KKKKKK     ",
-        "    KLLLLLLK    ",
-        "   KLGGGGGGGK   ",
-        "   KLGWWGGLGK   ",
-        "   KGLWBGGGGK   ",
-        "   KGLWGGGGLK   ",
-        "   KGGGGGGGGK   ",
-        "    KGGGGGGK    ",
-        "     KKKKKK     ",
-        "       KK       ",
-    ]
-    music_c = [
         "     K          ",
-        "    KK    K     ",
-        "   KKK   KK     ",
-        "   KK    KKK    ",
-        "          KK    ",
+        "    KK          ",
+        "    KK          ",
+        "     K          ",
+        "   KKK          ",
+        "  KBBBK         ",
+        "  KBEBBKKK      ",
+        "  KBBBBBBBK     ",
+        "   KBBBBBNK     ",
+        "    KBBBKK      ",
+        "   KBDDBBK      ",
+        "   KBDDBBK      ",
+        "   KBBBBBK      ",
+        "    KK KK       ",
+        "    K   K       ",
         "                ",
-        "     KKKKKK     ",
-        "    KLLLLLLK    ",
-        "   KLGGGGGGGK   ",
-        "   KLGWWGGLGK   ",
-        "   KGLWBGGGGK   ",
-        "   KGLWGGGGLK   ",
-        "   KGGGGGGGGK   ",
-        "    KGGGGGGK    ",
-        "     KKKKKK     ",
-        "      K  K      ",
     ]
     sprites.append(Sprite(
-        id="builtin-blob-music", name="Blob · Music",
-        fps=6, frames=[SpriteFrame(data=blob(f)) for f in [music_a, music_b, music_c, music_b]],
+        id="builtin-blob-music", name="Pup \u00b7 Bop",
+        fps=6, frames=[SpriteFrame(data=pup(f)) for f in [music_a, music_b, music_a, music_b]],
         tags=["music"], built_in=True, width=32, height=32,
     ))
 
-    # ---------- VIDEO: wide horizontal blob with two darting eyes ----------
+    # ---------- VIDEO: Puppy tilts head, watching ----------
     video_a = [
         "                ",
         "                ",
         "                ",
-        "    KKKKKKKK    ",
-        "   KLLLLLLLLK   ",
-        "  KGGWWGGWWGGK  ",
-        "  KGGWBGGWBGGK  ",
-        "  KGGGGGGGGGGK  ",
-        "  KGGRRSRSRGGK  ",
-        "   KKGGGGGGKK   ",
-        "     KKKKKK     ",
-        "      K  K      ",
-        "       KK       ",
-        "                ",
-        "                ",
+        "     KKK        ",
+        "    KBBBK       ",
+        "   KBEEBBK      ",
+        "   KBBBBBBKK    ",
+        "    KBBBBBNK    ",
+        "    KBBBBKK     ",
+        "    KBBBBBK     ",
+        "   KBDDBBBBK    ",
+        "   KBDDBBBBK    ",
+        "   KBBBBBBBK    ",
+        "    KK KK K     ",
+        "    K  K  K     ",
         "                ",
     ]
     video_b = [
         "                ",
         "                ",
         "                ",
-        "    KKKKKKKK    ",
-        "   KLLLLLLLLK   ",
-        "  KGGWWGGWWGGK  ",
-        "  KGGBWGGBWGGK  ",
-        "  KGGGGGGGGGGK  ",
-        "  KGGSRRSSSRGGK ",
-        "   KKGGGGGGKK   ",
-        "     KKKKKK     ",
-        "      K  K      ",
-        "       KK       ",
-        "                ",
-        "                ",
+        "    KKK         ",
+        "   KBBBKKK      ",
+        "   KBEEBBBK     ",
+        "    KBBBBBBK    ",
+        "    KBBBBBNK    ",
+        "    KBBBBKK     ",
+        "    KBBBBBK     ",
+        "   KBDDBBBBK    ",
+        "   KBDDBBBBK    ",
+        "   KBBBBBBBK    ",
+        "    KK KK K     ",
+        "    K  K  K     ",
         "                ",
     ]
     sprites.append(Sprite(
-        id="builtin-blob-video", name="Blob · Video",
-        fps=4, frames=[SpriteFrame(data=blob(f)) for f in [video_a, video_b]],
+        id="builtin-blob-video", name="Pup \u00b7 Watch",
+        fps=2, frames=[SpriteFrame(data=pup(f)) for f in [video_a, video_b]],
         tags=["video"], built_in=True, width=32, height=32,
     ))
 
-    # ---------- AUDIO: idle blob with radiating sound waves ----------
+    # ---------- AUDIO: Puppy ears perked ----------
     audio_a = [
         "                ",
-        "                ",
-        "           K    ",
-        "     KKKKKKK    ",
-        "    KLLLLLLGK K ",
-        "   KLGGGGGGGK   ",
-        "   KLGWWGGLGK K ",
-        "   KGLWBGGGGK   ",
-        "   KGLWGGGGLK K ",
-        "   KGGGGGGGGK   ",
-        "    KGGGGGGK  K ",
-        "     KKKKKK     ",
-        "      K  K      ",
-        "       KK       ",
-        "                ",
+        "   K   K        ",
+        "  KK   KK       ",
+        "  KBKKKBK       ",
+        "  KBBBBBK       ",
+        "  KBEBBEBKKK    ",
+        "  KBBBBBBBBK    ",
+        "   KBBBBBBNK    ",
+        "    KBBBBKK     ",
+        "    KBBBBBK     ",
+        "   KBDDBBBK     ",
+        "   KBDDBBBK     ",
+        "   KBBBBBK      ",
+        "    KK KK       ",
+        "    K   K       ",
         "                ",
     ]
     audio_b = [
         "                ",
-        "          K     ",
-        "         KK K   ",
-        "     KKKKKK  K  ",
-        "    KLLLLLLGK K ",
-        "   KLGGGGGGGK   ",
-        "   KLGWWGGLGKKK ",
-        "   KGLWBGGGGK K ",
-        "   KGLWGGGGLKKK ",
-        "   KGGGGGGGGK   ",
-        "    KGGGGGGK K  ",
-        "     KKKKKK K   ",
-        "      K  K      ",
-        "       KK       ",
-        "                ",
+        "   K    K       ",
+        "  KK    KK      ",
+        "  KBKKKKBK    K ",
+        "  KBBBBBBK   K  ",
+        "  KBEBBEBKKKK   ",
+        "  KBBBBBBBBK K  ",
+        "   KBBBBBBNK K  ",
+        "    KBBBBKK     ",
+        "    KBBBBBK     ",
+        "   KBDDBBBK     ",
+        "   KBDDBBBK     ",
+        "   KBBBBBK      ",
+        "    KK KK       ",
+        "    K   K       ",
         "                ",
     ]
     sprites.append(Sprite(
-        id="builtin-blob-audio", name="Blob · Audio",
-        fps=6, frames=[SpriteFrame(data=blob(f)) for f in [audio_a, audio_b]],
+        id="builtin-blob-audio", name="Pup \u00b7 Listen",
+        fps=5, frames=[SpriteFrame(data=pup(f)) for f in [audio_a, audio_b]],
         tags=["audio"], built_in=True, width=32, height=32,
     ))
 
-    # ---------- AFK: sleeping blob with Zzz ----------
+    # ---------- AFK: Puppy curled up asleep ----------
     afk_a = [
-        "       K        ",
-        "      KKK       ",
-        "       K  K     ",
-        "         KKK    ",
-        "           K    ",
+        "                ",
+        "     Z          ",
+        "    Z Z         ",
+        "     Z          ",
+        "                ",
         "                ",
         "     KKKKKK     ",
-        "    KLLLLLLK    ",
-        "   KLGGGGGGGK   ",
-        "   KLKKKGGLGK   ",
-        "   KGLGGGGGGK   ",
-        "   KGGGGGGGGK   ",
-        "    KGGGGGGK    ",
-        "     KKKKKK     ",
-        "      K  K      ",
-        "       KK       ",
+        "   KKBBBBBBKK   ",
+        "  KBBBEBBBBBBK  ",
+        " KBBBBBBBBBBBNK ",
+        " KBDDDDDDDDBBK  ",
+        "  KBDDDDDDBBK   ",
+        "   KKKKKKKKK    ",
+        "                ",
+        "                ",
+        "                ",
     ]
     afk_b = [
-        "      K         ",
-        "     KKK        ",
-        "      K   K     ",
-        "         KKK    ",
-        "          K     ",
-        "            K   ",
-        "     KKKKKK KK  ",
-        "    KLLLLLLK K  ",
-        "   KLGGGGGGGK   ",
-        "   KLKKKGGLGK   ",
-        "   KGLGGGGGGK   ",
-        "   KGGGGGGGGK   ",
-        "    KGGGGGGK    ",
+        "      Z         ",
+        "     Z Z        ",
+        "    Z           ",
+        "     Z          ",
+        "        Z       ",
+        "                ",
         "     KKKKKK     ",
-        "      K  K      ",
-        "       KK       ",
+        "   KKBBBBBBKK   ",
+        "  KBBBEBBBBBBK  ",
+        " KBBBBBBBBBBBNK ",
+        " KBDDDDDDDDBBK  ",
+        "  KBDDDDDDBBK   ",
+        "   KKKKKKKKK    ",
+        "                ",
+        "                ",
+        "                ",
     ]
     sprites.append(Sprite(
-        id="builtin-blob-afk", name="Blob · AFK",
-        fps=3, frames=[SpriteFrame(data=blob(f)) for f in [afk_a, afk_b]],
+        id="builtin-blob-afk", name="Pup \u00b7 Nap",
+        fps=2, frames=[SpriteFrame(data=pup(f)) for f in [afk_a, afk_b]],
         tags=["afk"], built_in=True, width=32, height=32,
     ))
 
@@ -917,14 +886,27 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("startup")
 async def startup_seed():
-    """Auto-seed defaults on first boot, or refresh when new built-ins are introduced."""
+    """Auto-seed defaults on first boot; refresh built-ins whenever the defaults version changes."""
+    DEFAULTS_VERSION = "puppy-v1"
+    meta = await db.meta.find_one({"id": "defaults"})
     latest = await db.sprites.find_one({"id": "builtin-blob-afk"})
     count = await db.sprites.count_documents({})
-    if count == 0 or not latest:
+    needs_reseed = (
+        count == 0
+        or not latest
+        or not meta
+        or meta.get("version") != DEFAULTS_VERSION
+    )
+    if needs_reseed:
         await db.sprites.delete_many({"built_in": True})
         defaults = _build_defaults()
         await db.sprites.insert_many([d.model_dump() for d in defaults])
-        logger.info("Seeded/refreshed %d default sprites", len(defaults))
+        await db.meta.update_one(
+            {"id": "defaults"},
+            {"$set": {"id": "defaults", "version": DEFAULTS_VERSION}},
+            upsert=True,
+        )
+        logger.info("Seeded/refreshed %d default sprites (version=%s)", len(defaults), DEFAULTS_VERSION)
     current = await db.settings.find_one({"id": "user"})
     if not current:
         await db.settings.insert_one(Settings().model_dump())

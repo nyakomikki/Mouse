@@ -84,7 +84,7 @@ export default function SettingsApp({ settings, setSettings, sprites, onSpritesR
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-[#111111] text-[#FAFAFA]">
-                  <SelectItem value="zombie">Zombie (themed)</SelectItem>
+                  <SelectItem value="zombie">Puppy Bone (themed)</SelectItem>
                   <SelectItem value="classic">Classic arrow</SelectItem>
                   <SelectItem value="off">Hidden</SelectItem>
                 </SelectContent>

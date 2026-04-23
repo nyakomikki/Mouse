@@ -85,7 +85,7 @@ function DesktopInner() {
     ? "classic-cursor"
     : settings.cursor_theme === "off"
       ? "off-cursor"
-      : "zombie-cursor";
+      : "puppy-cursor";
   const sizeClass = `cursor-${settings.cursor_size || "md"}`;
 
   return (

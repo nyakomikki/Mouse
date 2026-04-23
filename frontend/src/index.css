@@ -32,18 +32,18 @@ code, .font-mono {
 .scroll-mini::-webkit-scrollbar-thumb { background: #2E2E2E; }
 .scroll-mini::-webkit-scrollbar-track { background: transparent; }
 
-/* Themed cursors — pick via .zombie-cursor / .classic-cursor / .off-cursor on a parent */
-.zombie-cursor,
-.zombie-cursor * {
-    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='28' shape-rendering='crispEdges'><g fill='%236fa04f' stroke='%231a2e10' stroke-width='1'><polygon points='2,2 2,18 6,14 9,21 12,20 9,13 15,13'/></g><circle cx='11' cy='6' r='1.2' fill='%23dc2626'/></svg>") 2 2, crosshair;
+/* Themed cursors — .puppy-cursor (bone-shaped), .classic-cursor, .off-cursor */
+.puppy-cursor,
+.puppy-cursor * {
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='18' shape-rendering='crispEdges'><g fill='%23f0ecd4' stroke='%238b7d3a' stroke-width='1.2'><circle cx='5' cy='5' r='4'/><circle cx='5' cy='13' r='4'/><rect x='4' y='6' width='20' height='6'/><circle cx='23' cy='5' r='4'/><circle cx='23' cy='13' r='4'/></g></svg>") 14 9, crosshair;
 }
-.cursor-sm.zombie-cursor,
-.cursor-sm.zombie-cursor * {
-    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='20' shape-rendering='crispEdges'><g fill='%236fa04f' stroke='%231a2e10' stroke-width='1'><polygon points='2,2 2,14 5,11 7,16 9,15 7,10 12,10'/></g></svg>") 2 2, crosshair;
+.cursor-sm.puppy-cursor,
+.cursor-sm.puppy-cursor * {
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='14' shape-rendering='crispEdges'><g fill='%23f0ecd4' stroke='%238b7d3a' stroke-width='1'><circle cx='4' cy='4' r='3'/><circle cx='4' cy='10' r='3'/><rect x='4' y='5' width='14' height='4'/><circle cx='18' cy='4' r='3'/><circle cx='18' cy='10' r='3'/></g></svg>") 11 7, crosshair;
 }
-.cursor-lg.zombie-cursor,
-.cursor-lg.zombie-cursor * {
-    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='40' shape-rendering='crispEdges'><g fill='%236fa04f' stroke='%231a2e10' stroke-width='1.5'><polygon points='3,3 3,28 9,22 14,32 18,30 13,20 22,20'/></g><circle cx='16' cy='9' r='2' fill='%23dc2626'/></svg>") 3 3, crosshair;
+.cursor-lg.puppy-cursor,
+.cursor-lg.puppy-cursor * {
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='24' shape-rendering='crispEdges'><g fill='%23f0ecd4' stroke='%238b7d3a' stroke-width='1.5'><circle cx='7' cy='7' r='5'/><circle cx='7' cy='17' r='5'/><rect x='6' y='8' width='24' height='8'/><circle cx='29' cy='7' r='5'/><circle cx='29' cy='17' r='5'/></g></svg>") 18 12, crosshair;
 }
 .classic-cursor,
 .classic-cursor * { cursor: default; }
@@ -53,8 +53,8 @@ code, .font-mono {
 .classic-cursor [role="button"] { cursor: pointer; }
 .off-cursor,
 .off-cursor * { cursor: none !important; }
-.zombie-cursor input,
-.zombie-cursor textarea {
+.puppy-cursor input,
+.puppy-cursor textarea {
     cursor: text;
 }
 

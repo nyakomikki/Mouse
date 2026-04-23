@@ -43,11 +43,15 @@ export default function SpriteFollower({ sprites, settings }) {
       vel.current.x *= 0.9;
       vel.current.y *= 0.9;
       if (containerRef.current) {
-        const baseOx = settings?.offset_x ?? 30;
-        const baseOy = settings?.offset_y ?? 30;
+        const chewing = containerRef.current.dataset.chewing === "1";
+        const size = settings?.sprite_size ?? 56;
+        // At idle the puppy sits on the bone (offset ≈ centered on cursor),
+        // otherwise it trails / chases with the user-configured offset.
+        const baseOx = chewing ? -Math.round(size * 0.85) : (settings?.offset_x ?? 30);
+        const baseOy = chewing ? -Math.round(size * 0.45) : (settings?.offset_y ?? 30);
         const speedMag = Math.hypot(vel.current.x, vel.current.y);
         let trailX = 0, trailY = 0;
-        if (speedMag > 0.5) {
+        if (!chewing && speedMag > 0.5) {
           const nx = vel.current.x / speedMag;
           const ny = vel.current.y / speedMag;
           trailX = -nx * Math.min(speedMag * 1.2, 40);
@@ -56,8 +60,12 @@ export default function SpriteFollower({ sprites, settings }) {
         containerRef.current.style.transform =
           `translate3d(${pos.current.x + baseOx + trailX}px, ${pos.current.y + baseOy + trailY}px, 0)`;
         if (imgRef.current) {
-          const dx = target.current.x - pos.current.x;
-          imgRef.current.style.transform = dx < -4 ? "scaleX(-1)" : "scaleX(1)";
+          if (chewing) {
+            imgRef.current.style.transform = "scaleX(1)";
+          } else {
+            const dx = target.current.x - pos.current.x;
+            imgRef.current.style.transform = dx < -4 ? "scaleX(-1)" : "scaleX(1)";
+          }
         }
       }
       rafId = requestAnimationFrame(tick);
@@ -68,7 +76,7 @@ export default function SpriteFollower({ sprites, settings }) {
       document.removeEventListener("visibilitychange", onVisibility);
       cancelAnimationFrame(rafId);
     };
-  }, [settings?.follow_speed, settings?.offset_x, settings?.offset_y]);
+  }, [settings?.follow_speed, settings?.offset_x, settings?.offset_y, settings?.sprite_size]);
 
   // Resolve effective state with priority:
   //   transient (close/minimize pulse)
@@ -82,6 +90,15 @@ export default function SpriteFollower({ sprites, settings }) {
     return mouseState || "idle";
   })();
   const activeSprite = pickSprite(sprites, settings, effectiveState);
+
+  // When state is "idle", the puppy should CHEW the bone-cursor — override
+  // the follower offset so the sprite center sits right on top of the cursor.
+  // For any other state the normal chasing offset is used (see RAF tick below).
+  const isChewing = effectiveState === "idle";
+  useEffect(() => {
+    if (!containerRef.current) return;
+    containerRef.current.dataset.chewing = isChewing ? "1" : "0";
+  }, [isChewing]);
 
   // Frame cycling — pauses while tab is hidden (performance)
   const [frameIdx, setFrameIdx] = useState(0);
