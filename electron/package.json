@@ -1,0 +1,54 @@
+{
+  "name": "mouseferatu-desktop",
+  "version": "0.1.0",
+  "description": "Mouseferatu — a pixel puppy that chases your cursor on Windows.",
+  "main": "main.js",
+  "author": "You",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "start:dev": "cross-env MOUSEFERATU_DEV=1 electron .",
+    "dist": "electron-builder --win --x64",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "active-win": "^8.2.1",
+    "auto-launch": "^5.0.6",
+    "electron-store": "^8.2.0",
+    "get-windows": "^9.0.3",
+    "uiohook-napi": "^1.5.4"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^30.0.9",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.mouseferatu.desktop",
+    "productName": "Mouseferatu",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "native.js",
+      "renderer/**/*",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      { "from": "assets", "to": "assets" }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Mouseferatu"
+    }
+  }
+}
