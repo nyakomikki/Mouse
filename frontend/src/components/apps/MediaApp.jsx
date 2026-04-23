@@ -114,28 +114,24 @@ export default function MediaApp() {
   // Video canvas animation (while mode === 'video')
   useEffect(() => {
     const canvas = videoCanvasRef.current;
-    if (!canvas || mode !== "video") {
-      if (rafVideoRef.current) cancelAnimationFrame(rafVideoRef.current);
-      return undefined;
-    }
+    if (!canvas || mode !== "video") return undefined;
     const ctx = canvas.getContext("2d");
     let t = 0;
+    let rafId;
+    let timeoutId;
     const draw = () => {
       if (document.hidden) {
-        rafVideoRef.current = setTimeout(() => { rafVideoRef.current = requestAnimationFrame(draw); }, 500);
+        timeoutId = setTimeout(() => { rafId = requestAnimationFrame(draw); }, 500);
         return;
       }
       t += 0.02;
       const w = canvas.width, h = canvas.height;
-      // VHS-style scene
       ctx.fillStyle = "#0A0A0A";
       ctx.fillRect(0, 0, w, h);
-      // scanning gradient
       for (let y = 0; y < h; y += 3) {
         ctx.fillStyle = `rgba(111,160,79,${0.03 + 0.03 * Math.sin(y * 0.08 + t * 4)})`;
         ctx.fillRect(0, y, w, 1);
       }
-      // moving ghost shapes
       for (let i = 0; i < 6; i++) {
         const x = (Math.sin(t + i) * 0.5 + 0.5) * w;
         const y = (Math.cos(t * 0.6 + i * 1.3) * 0.5 + 0.5) * h;
@@ -145,16 +141,15 @@ export default function MediaApp() {
         ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
       }
       ctx.globalAlpha = 1;
-      // timecode
       ctx.fillStyle = "#6fa04f";
       ctx.font = "10px monospace";
       ctx.fillText(`REC · ${t.toFixed(2)}`, 8, h - 8);
-      rafVideoRef.current = requestAnimationFrame(draw);
+      rafId = requestAnimationFrame(draw);
     };
-    rafVideoRef.current = requestAnimationFrame(draw);
+    rafId = requestAnimationFrame(draw);
     return () => {
-      if (typeof rafVideoRef.current === "number") cancelAnimationFrame(rafVideoRef.current);
-      if (rafVideoRef.current && typeof rafVideoRef.current === "object") {/*nop*/}
+      if (rafId) cancelAnimationFrame(rafId);
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [mode]);
 
