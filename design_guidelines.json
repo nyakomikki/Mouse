@@ -1,0 +1,71 @@
+{
+  "theme": "dark",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "color_palette": {
+    "background_desktop": "#0A0A0A",
+    "surface_window": "#111111",
+    "surface_panel": "#1A1A1A",
+    "border_subtle": "#2E2E2E",
+    "border_focus": "#FAFAFA",
+    "text_primary": "#FAFAFA",
+    "text_secondary": "#888888",
+    "accent_primary": "#DC2626",
+    "accent_secondary": "#FACC15",
+    "canvas_bg": "#141414"
+  },
+  "typography": {
+    "font_family_headings": "'IBM Plex Sans', sans-serif",
+    "font_family_body": "'IBM Plex Sans', sans-serif",
+    "font_family_mono": "'IBM Plex Mono', monospace",
+    "h1": "text-4xl sm:text-5xl tracking-tight font-bold",
+    "h2": "text-2xl sm:text-3xl tracking-tight font-semibold",
+    "h3": "text-xl sm:text-2xl font-semibold",
+    "h4": "text-lg sm:text-xl font-medium",
+    "body": "text-base leading-relaxed text-[#FAFAFA]",
+    "labels": "text-xs uppercase tracking-[0.2em] font-mono text-[#888888]"
+  },
+  "layout_and_spacing": {
+    "desktop_canvas": "w-screen h-screen overflow-hidden bg-[#0A0A0A] relative selection:bg-[#FAFAFA] selection:text-[#0A0A0A]",
+    "window_container": "absolute bg-[#111111] border border-[#2E2E2E] shadow-[0_32px_64px_-16px_rgba(0,0,0,1)] flex flex-col overflow-hidden",
+    "window_header": "h-10 bg-[#0A0A0A] border-b border-[#2E2E2E] flex items-center justify-between px-4 cursor-grab active:cursor-grabbing text-xs font-mono uppercase tracking-widest",
+    "editor_grid": "flex-1 grid grid-cols-[64px_1fr_240px] grid-rows-[1fr_200px] gap-px bg-[#2E2E2E] overflow-hidden",
+    "editor_sidebar": "bg-[#111111] h-full flex flex-col p-2 gap-2 border-r border-[#2E2E2E]",
+    "editor_properties": "bg-[#111111] h-full flex flex-col p-4 gap-4 border-l border-[#2E2E2E] overflow-y-auto",
+    "editor_canvas_wrapper": "bg-[#141414] relative flex items-center justify-center overflow-auto",
+    "timeline": "col-span-3 bg-[#111111] border-t border-[#2E2E2E] flex flex-col"
+  },
+  "components": {
+    "button_primary": "px-4 py-2 text-sm font-mono tracking-wide transition-colors bg-[#FAFAFA] text-[#0A0A0A] hover:bg-[#D4D4D8] disabled:opacity-50",
+    "button_secondary": "px-4 py-2 text-sm font-mono tracking-wide transition-colors border border-[#2E2E2E] text-[#FAFAFA] hover:bg-[#1A1A1A] hover:border-[#FAFAFA]",
+    "tool_button": "w-10 h-10 flex items-center justify-center border border-transparent hover:bg-[#1A1A1A] rounded transition-all data-[active=true]:bg-[#FAFAFA] data-[active=true]:text-[#0A0A0A]",
+    "dock": "fixed bottom-6 left-1/2 -translate-x-1/2 flex gap-4 p-3 bg-[#111111]/80 backdrop-blur-2xl border border-[#2E2E2E] rounded shadow-2xl z-50",
+    "color_swatch": "w-6 h-6 rounded-sm border border-[#2E2E2E] cursor-pointer hover:scale-110 transition-transform data-[active=true]:border-[#FAFAFA]"
+  },
+  "interaction_and_motion": {
+    "drag_drop": "Use pure HTML5 Drag/Drop or Framer Motion 'drag' for the fake OS windows. Do NOT use standard center alignments. Windows should spawn staggered.",
+    "hover_states": "Crisp transitions. Text goes from gray to white. Backgrounds go from #111111 to #1A1A1A.",
+    "sprite_follower": "Sprite must follow cursor using a `requestAnimationFrame` lerp loop for smooth trailing. Different states (drag, resize) trigger different sprite sheet offsets/animations. It MUST ignore pointer events (pointer-events-none) and live at a massive z-index.",
+    "focus_states": "High contrast 2px solid white outline on focus. No soft glows."
+  },
+  "assets": {
+    "icons_library": "lucide-react",
+    "images": [
+      {
+        "category": "desktop_wallpaper",
+        "url": "https://images.pexels.com/photos/36545253/pexels-photo-36545253.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=1080&w=1920",
+        "description": "Abstract dark geometric pattern for the OS background. Blend it with a CSS radial gradient dot overlay."
+      }
+    ]
+  },
+  "accessibility_and_testing": {
+    "contrast": "Swiss architecture means absolute legibility. Text on #111111 must be at least #888888 (min 4.5:1).",
+    "testing_attributes": "All tools, timeline frames, and window controls MUST have `data-testid`."
+  },
+  "instructions_to_main_agent": {
+    "philosophy": "This is E1's design. Do NOT use soft SaaS blobs, teal gradients, or rounded-3xl corners. Use 1px sharp borders, structural grids, and functional minimalism. Tension is created by the messy pixel art existing inside a rigid, high-contrast, perfectly aligned Swiss container.",
+    "desktop_engine": "Implement a `DesktopContext` managing a list of open windows, their z-index, position (x,y), and size. Provide dragging handles on headers. The quick-launch dock toggles the visibility of the Settings and Sprite Editor apps.",
+    "sprite_editor_engine": "Use HTML5 `<canvas>` for drawing to prevent massive DOM overhead from grid cells. State must manage: Frames[], CurrentFrame, FPS, IsPlaying, OnionSkin (bool), CurrentTool (pencil, eraser, fill, picker). Implement a live preview window component that loops over the frames at the given FPS.",
+    "css_background": "Add a faint dot grid to the desktop using CSS: `background-image: radial-gradient(#2E2E2E 1px, transparent 1px); background-size: 24px 24px;`",
+    "fonts_setup": "Add `<link href=\"https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap\" rel=\"stylesheet\">` to public/index.html."
+  }
+}
