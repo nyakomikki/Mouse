@@ -71,12 +71,12 @@ class Settings(BaseModel):
     offset_y: int = 30
     trail_enabled: bool = False
     state_map: Dict[str, Optional[str]] = Field(default_factory=lambda: {
-        "idle": "builtin-pixel-zombie",
-        "move": "builtin-pixel-zombie",
-        "drag": "builtin-pixel-zombie",
-        "resize": "builtin-pixel-zombie",
-        "minimize": "builtin-pixel-zombie",
-        "close": "builtin-pixel-zombie",
+        "idle": "builtin-blob-idle",
+        "move": "builtin-blob-move",
+        "drag": "builtin-blob-drag",
+        "resize": "builtin-blob-resize",
+        "minimize": "builtin-blob-minimize",
+        "close": "builtin-blob-close",
     })
 
 class SettingsUpdate(BaseModel):
@@ -122,86 +122,319 @@ def _px(color_idx_grid, palette, w=16, h=16, scale=2):
 
 
 def _build_defaults():
-    """Create default sprites (zombie, cat, ghost, star, arrows)."""
+    """Create default sprites. The zombie-blob morphs between six per-state forms."""
     sprites = []
 
-    # --- PIXEL ZOMBIE (the star of the show) — 4 frame shuffle/bob
-    # Palette
-    pal_z = {
+    # Shared zombie-blob palette
+    pal_b = {
         ' ': (0, 0, 0, 0),
-        'K': (26, 46, 16, 255),    # dark outline (green-black)
-        'G': (90, 140, 70, 255),   # main zombie green
-        'L': (140, 180, 110, 255), # highlight light green
-        'W': (230, 230, 230, 255), # eye white
-        'E': (220, 38, 38, 255),   # red pupil
-        'R': (110, 26, 26, 255),   # wound dark
-        'B': (239, 68, 68, 255),   # blood bright
+        'K': (16, 36, 10, 255),       # outline near-black green
+        'G': (90, 140, 70, 255),      # main green
+        'L': (140, 180, 110, 255),    # highlight
+        'D': (60, 100, 45, 255),      # shadow
+        'W': (245, 245, 245, 255),    # eye white
+        'B': (18, 18, 18, 255),       # pupil
+        'E': (220, 38, 38, 255),      # red pupil / eye highlight
+        'R': (110, 26, 26, 255),      # wound dark
+        'S': (239, 68, 68, 255),      # blood bright
     }
 
-    def zombie_frame(head_shift, arm_variant, mouth_variant):
-        g = [list("                ") for _ in range(16)]
-        # head (rows 1..6) shifted left/right by head_shift
-        head_lines = [
-            "     KKKKK      ",
-            "    KKGGGKK     ",
-            "   KGGLLGGGK    ",
-            "   KGWEKEWGK    ",
-            "   KGGGKGGGGK   ",
-        ]
-        mouth_lines = {
-            0: "   KGRRBBRRRGK  ",
-            1: "   KGRBBBBRRGK  ",
-            2: "   KGRRRBBRRGK  ",
-        }
-        head_lines.append(mouth_lines[mouth_variant])
-        for i, line in enumerate(head_lines):
-            # shift
-            shifted = list(line)
-            if head_shift > 0:
-                shifted = [' '] * head_shift + shifted[:-head_shift]
-            elif head_shift < 0:
-                shifted = shifted[-head_shift:] + [' '] * (-head_shift)
-            g[1 + i] = shifted
+    def blob(rows):
+        # ensure 16 columns per row via natural padding in _px
+        return _px(rows, pal_b, 16, 16, 2)
 
-        # neck/shoulders
-        g[7] = list("    KGGGGGGK    ")
-        g[8] = list("   KKGGGGGGKK   ")
-
-        # arms — variant A outstretched, variant B right-up, variant C left-up
-        if arm_variant == 0:
-            g[9]  = list("  KGG GGGG GGK  ")
-            g[10] = list("  GGG  GG  GGG  ")
-        elif arm_variant == 1:
-            g[9]  = list("  KGGKGGGG  GGK ")
-            g[10] = list("  GGG  GG   GGG ")
-        else:
-            g[9]  = list(" KGG  GGGGKGG   ")
-            g[10] = list(" GGG   GG  GGG  ")
-
-        # torso
-        g[11] = list("      GGGG      ")
-        g[12] = list("      GGGG      ")
-
-        # legs / feet
-        g[13] = list("     KG  GK     ")
-        g[14] = list("     KG  GK     ")
-        g[15] = list("    KKK  KKK    ")
-
-        return [''.join(r) for r in g]
-
-    z_frames = [
-        _px(zombie_frame(0, 0, 0), pal_z, 16, 16, 2),
-        _px(zombie_frame(1, 1, 1), pal_z, 16, 16, 2),
-        _px(zombie_frame(0, 0, 2), pal_z, 16, 16, 2),
-        _px(zombie_frame(-1, 2, 1), pal_z, 16, 16, 2),
+    # ---------- IDLE: breathing blob with a single watching eye ----------
+    idle_a = [
+        "                ",
+        "                ",
+        "     KKKKKK     ",
+        "    KLLLLLLK    ",
+        "   KLGGGGGGGK   ",
+        "   KLGWWGGLGK   ",
+        "   KGLWBGGGGK   ",
+        "   KGLWGGGGLK   ",
+        "   KGGGGGGGGK   ",
+        "    KGGGGGGK    ",
+        "     KKKKKK     ",
+        "      K  K      ",
+        "       KK       ",
+        "                ",
+        "                ",
+        "                ",
+    ]
+    idle_b = [
+        "                ",
+        "     KKKKKK     ",
+        "    KLLLLLLK    ",
+        "   KLGGGGGGGK   ",
+        "   KLGWWGGLGK   ",
+        "   KGLWBGGGGK   ",
+        "   KGLWGGGGLK   ",
+        "   KGGGGGGGGK   ",
+        "   KGGGGGGGGK   ",
+        "    KGGGGGGK    ",
+        "     KKKKKK     ",
+        "       KK       ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+    ]
+    idle_c = [
+        "                ",
+        "                ",
+        "                ",
+        "    KKKKKKKK    ",
+        "   KLLLLLLLGK   ",
+        "  KLGGWWGGLGGK  ",
+        "  KGGWBGGGGLGK  ",
+        "  KGGWGGGGGGGK  ",
+        "   KKGGGGGGKK   ",
+        "     KKKKKK     ",
+        "      K  K      ",
+        "      K  K      ",
+        "       KK       ",
+        "                ",
+        "                ",
+        "                ",
     ]
     sprites.append(Sprite(
-        id="builtin-pixel-zombie",
-        name="Pixel Zombie",
-        fps=5,
-        frames=[SpriteFrame(data=f) for f in z_frames],
-        tags=["idle", "move", "drag", "resize", "minimize", "close"],
-        built_in=True, width=32, height=32,
+        id="builtin-blob-idle", name="Blob · Idle",
+        fps=4, frames=[SpriteFrame(data=blob(f)) for f in [idle_a, idle_b, idle_c, idle_b]],
+        tags=["idle"], built_in=True, width=32, height=32,
+    ))
+
+    # ---------- MOVE: stretched blob with motion trail streaks ----------
+    move_a = [
+        "                ",
+        "                ",
+        "                ",
+        "           KKK  ",
+        "  K      KKGGGK ",
+        "   K    KGLLGGK ",
+        " KK  KKKGLWBGGK ",
+        "K K KGGGGGWGGGK ",
+        "     KGGGGGGGK  ",
+        "   KKK KKGGGGK  ",
+        "  K  KKK KKKK   ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+    ]
+    move_b = [
+        "                ",
+        "                ",
+        "                ",
+        "           KKKK ",
+        "    K   KKKGLGK ",
+        " KK  KKKGLWWGGK ",
+        "K K KGGGGWBGGGK ",
+        "  KKKGGGGGGGGGK ",
+        "   K KKKGGGGGK  ",
+        "  KK   KKKKKK   ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+    ]
+    sprites.append(Sprite(
+        id="builtin-blob-move", name="Blob · Move",
+        fps=8, frames=[SpriteFrame(data=blob(f)) for f in [move_a, move_b]],
+        tags=["move"], built_in=True, width=32, height=32,
+    ))
+
+    # ---------- DRAG: clawed blob with grasping tentacles ----------
+    drag_a = [
+        "   K        K   ",
+        "   KK      KK   ",
+        "    KK    KK    ",
+        "     KGGGGGK    ",
+        "    KGLLLLLGK   ",
+        "    KGLWWLGLK   ",
+        "   KKGLWBGLGK   ",
+        "   KGGGWEGGGK   ",
+        "   KGGGGGGGGK   ",
+        "    KGGGGGGK    ",
+        "   KKKGGGGKKK   ",
+        "  KK K KK K KK  ",
+        "  K  K  K  K K  ",
+        " K   K      K K ",
+        "                ",
+        "                ",
+    ]
+    drag_b = [
+        "    K      K    ",
+        "   KK      KK   ",
+        "    KK    KK    ",
+        "     KGGGGGK    ",
+        "    KGLLLLLGK   ",
+        "    KGLWWLGLK   ",
+        "   KKGLWBGLGK   ",
+        "   KGGGWEGGGK   ",
+        "   KGGGGGGGGK   ",
+        "   KKKGGGGGKKK  ",
+        "  KK KGGGGK KK  ",
+        "  K   KKKK   K  ",
+        " K  K K  K K  K ",
+        " K K   KK   K K ",
+        "K                ",
+        "                ",
+    ]
+    sprites.append(Sprite(
+        id="builtin-blob-drag", name="Blob · Drag",
+        fps=6, frames=[SpriteFrame(data=blob(f)) for f in [drag_a, drag_b]],
+        tags=["drag"], built_in=True, width=32, height=32,
+    ))
+
+    # ---------- RESIZE: diagonal stretched blob (NW-SE) ----------
+    resize_a = [
+        "KK              ",
+        "KKK             ",
+        " KLK            ",
+        " KLLK           ",
+        "  KGLK          ",
+        "   KGLKK        ",
+        "    KGGGKK      ",
+        "    KGLWBGK     ",
+        "     KGWEGGK    ",
+        "      KGGGGKK   ",
+        "       KGGGLK   ",
+        "        KGGLLK  ",
+        "         KKGLK  ",
+        "           KKK  ",
+        "            KKK ",
+        "             KK ",
+    ]
+    resize_b = [
+        "K               ",
+        "KK              ",
+        " KK             ",
+        " KLLK           ",
+        "  KLLK          ",
+        "   KGLLK        ",
+        "    KGGLKK      ",
+        "    KGLWWGK     ",
+        "     KGGBEGK    ",
+        "      KKGGGLK   ",
+        "        KGGGLK  ",
+        "        KKGGLK  ",
+        "          KKGLK ",
+        "           KKKK ",
+        "             KK ",
+        "              K ",
+    ]
+    sprites.append(Sprite(
+        id="builtin-blob-resize", name="Blob · Resize",
+        fps=5, frames=[SpriteFrame(data=blob(f)) for f in [resize_a, resize_b]],
+        tags=["resize"], built_in=True, width=32, height=32,
+    ))
+
+    # ---------- MINIMIZE: flattening melting blob ----------
+    mini_a = [
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "     KKKKKK     ",
+        "    KLLLLLLK    ",
+        "   KGLWWWGGGK   ",
+        "  KGGWBGWBGGGK  ",
+        "  KGGGGGGGGGGK  ",
+        "   KKGGGGGGKK   ",
+        "     KKKKKK     ",
+        "     K    K     ",
+        "      K  K      ",
+        "       KK       ",
+    ]
+    mini_b = [
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "    KKKKKKKK    ",
+        "   KLLLLLLLGK   ",
+        "  KGGWBGGWBGGK  ",
+        "  KKGGGGGGGGKK  ",
+        "    KKKKKKKK    ",
+        "    K  K  K     ",
+        "     K K  K     ",
+        "      K   K     ",
+        "       K  K     ",
+    ]
+    mini_c = [
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "   KKKKKKKKKK   ",
+        "  KGGGWBGWBGGK  ",
+        "   KKKKKKKKKK   ",
+        "   K K K K KK   ",
+        "    K K K  K    ",
+        "     K   K  K   ",
+        "      K   K     ",
+    ]
+    sprites.append(Sprite(
+        id="builtin-blob-minimize", name="Blob · Minimize",
+        fps=8, frames=[SpriteFrame(data=blob(f)) for f in [mini_a, mini_b, mini_c]],
+        tags=["minimize"], built_in=True, width=32, height=32,
+    ))
+
+    # ---------- CLOSE: explosion splatter (goo bits flying out) ----------
+    close_a = [
+        "K              K",
+        " K    KKKK    K ",
+        "     KLLLLK     ",
+        "    KLGGGGGK    ",
+        "K  KGGSRSGGLGK K",
+        "  KGGRSSSRGGGGK ",
+        " KGGGSRRSSSGGGK ",
+        "KGGSREERESSGGGK ",
+        "KGGSRRRRRSSSGGK ",
+        " KGGGSSSSRSGGK  ",
+        "  KGGGGGGGGGK   ",
+        " KKKGGGGGGGKK   ",
+        "K  KKKKKKKKK  K ",
+        " K  K  K  K  K  ",
+        "K K        K  K ",
+        "   K          K ",
+    ]
+    close_b = [
+        "K   K      K   K",
+        " K K        K K ",
+        "K   KKKKKKKK   K",
+        "    KLLLLLLK    ",
+        "   KGGSSRSSGGK  ",
+        "  KGGRREEERRGGK ",
+        "  KGGRESSERRGGK ",
+        " KGGSSRSSRSSGGK ",
+        " KGGGRRSSRRRGGK ",
+        "  KGGGSSSSSGGK  ",
+        "   KKGGGGGGKK   ",
+        " KK KKKKKKKK KK ",
+        "K K K K  K K K K",
+        "     K    K     ",
+        "K  K        K  K",
+        " K            K ",
+    ]
+    sprites.append(Sprite(
+        id="builtin-blob-close", name="Blob · Close",
+        fps=7, frames=[SpriteFrame(data=blob(f)) for f in [close_a, close_b]],
+        tags=["close"], built_in=True, width=32, height=32,
     ))
 
     # --- CAT (orange tabby) 4 idle frames blink+tail sway
