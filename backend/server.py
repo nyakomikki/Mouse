@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,7 +6,7 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from typing import List, Optional, Dict
 import uuid
 from datetime import datetime, timezone
 
@@ -14,59 +14,366 @@ from datetime import datetime, timezone
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
-app = FastAPI()
-
-# Create a router with the /api prefix
+app = FastAPI(title="Mouseferatu - Desktop Companion API")
 api_router = APIRouter(prefix="/api")
 
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
+# ---------- Models ----------
+
+class SpriteFrame(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    data: str  # base64 PNG data URL
+
+class Sprite(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    name: str
+    width: int = 32
+    height: int = 32
+    fps: int = 8
+    loop: bool = True
+    frames: List[SpriteFrame] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)  # e.g. ["idle","move"]
+    built_in: bool = False
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class SpriteCreate(BaseModel):
+    name: str
+    width: int = 32
+    height: int = 32
+    fps: int = 8
+    loop: bool = True
+    frames: List[SpriteFrame] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)
 
-# Add your routes to the router instead of directly to app
+class SpriteUpdate(BaseModel):
+    name: Optional[str] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    fps: Optional[int] = None
+    loop: Optional[bool] = None
+    frames: Optional[List[SpriteFrame]] = None
+    tags: Optional[List[str]] = None
+
+
+class Settings(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = "user"
+    enabled: bool = True
+    sprite_size: int = 64
+    follow_speed: float = 0.18  # lerp factor
+    offset_x: int = 18
+    offset_y: int = 18
+    trail_enabled: bool = False
+    state_map: Dict[str, Optional[str]] = Field(default_factory=lambda: {
+        "idle": None, "move": None, "drag": None,
+        "resize": None, "minimize": None, "close": None
+    })
+
+class SettingsUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    sprite_size: Optional[int] = None
+    follow_speed: Optional[float] = None
+    offset_x: Optional[int] = None
+    offset_y: Optional[int] = None
+    trail_enabled: Optional[bool] = None
+    state_map: Optional[Dict[str, Optional[str]]] = None
+
+
+# ---------- Built-in sprite factory ----------
+
+def _px(color_idx_grid, palette, w=16, h=16, scale=2):
+    """Render a tiny pixel-grid (list of strings) to a base64 PNG data URL."""
+    # We'll build a simple PNG without PIL by encoding raw pixels → but PIL not in deps.
+    # Use a pure-python PNG builder via zlib + struct.
+    import zlib, struct, base64
+    out_w = w * scale
+    out_h = h * scale
+    raw = bytearray()
+    # Build row by row with scaling
+    for y in range(h):
+        row = color_idx_grid[y]
+        for _ in range(scale):
+            raw.append(0)  # filter type none
+            for x in range(w):
+                ch = row[x] if x < len(row) else ' '
+                rgba = palette.get(ch, (0, 0, 0, 0))
+                for _s in range(scale):
+                    raw.extend(rgba)
+
+    def chunk(tag, data):
+        return (struct.pack(">I", len(data)) + tag + data
+                + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff))
+
+    sig = b'\x89PNG\r\n\x1a\n'
+    ihdr = struct.pack(">IIBBBBB", out_w, out_h, 8, 6, 0, 0, 0)
+    idat = zlib.compress(bytes(raw), 9)
+    png = sig + chunk(b'IHDR', ihdr) + chunk(b'IDAT', idat) + chunk(b'IEND', b'')
+    return "data:image/png;base64," + base64.b64encode(png).decode('ascii')
+
+
+def _build_defaults():
+    """Create default sprites (cat, ghost, star, arrow)."""
+    sprites = []
+
+    # --- CAT (orange tabby) 4 idle frames blink+tail sway
+    cat_base = [
+        "                ",
+        "                ",
+        "   OO      OO   ",
+        "  OBBO    OBBO  ",
+        "  OBBBOOOOBBBO  ",
+        "  OBBWBBBBWBBO  ",
+        "  OBBBBPPBBBBO  ",
+        "  OBBBBBBBBBBO  ",
+        "   BBBBBBBBBB   ",
+        "    BBBBBBBB    ",
+        "     PPPPPP     ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+    ]
+    cat_tail_a = [list(r) for r in cat_base]
+    cat_tail_b = [list(r) for r in cat_base]
+    cat_tail_c = [list(r) for r in cat_base]
+    # add swaying tail pixels
+    cat_tail_a[9][14] = 'B'; cat_tail_a[10][14] = 'B'
+    cat_tail_b[8][14] = 'B'; cat_tail_b[9][15] = 'B'
+    cat_tail_c[10][14] = 'B'; cat_tail_c[11][13] = 'B'
+    # blink frame: close eyes
+    cat_blink = [list(r) for r in cat_base]
+    cat_blink[3] = list("  O--O    O--O  ")
+    cat_blink[2] = list("                ")
+    pal_cat = {
+        ' ': (0, 0, 0, 0),
+        'O': (255, 140, 40, 255),   # outline orange
+        'B': (255, 180, 80, 255),   # body lighter
+        'W': (255, 255, 255, 255),  # muzzle
+        'P': (230, 80, 80, 255),    # nose/mouth
+        '-': (30, 30, 30, 255),     # closed eye
+    }
+    frames_cat = [
+        _px(cat_tail_a, pal_cat, 16, 16, 2),
+        _px(cat_tail_b, pal_cat, 16, 16, 2),
+        _px(cat_tail_c, pal_cat, 16, 16, 2),
+        _px(cat_blink, pal_cat, 16, 16, 2),
+    ]
+    sprites.append(Sprite(name="Tabby Cat", fps=6, frames=[SpriteFrame(data=f) for f in frames_cat],
+                          tags=["idle"], built_in=True, width=32, height=32))
+
+    # --- GHOST
+    ghost_a = [
+        "                ",
+        "    WWWWWWWW    ",
+        "   WWWWWWWWWW   ",
+        "  WWWWWWWWWWWW  ",
+        "  WWKWWWWWWKWW  ",
+        "  WWKWWWWWWKWW  ",
+        "  WWWWWWWWWWWW  ",
+        "  WWWWWRRRWWWW  ",
+        "  WWWWWWWWWWWW  ",
+        "  WWWWWWWWWWWW  ",
+        "  WWWWWWWWWWWW  ",
+        "  W WW WW WW W  ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+    ]
+    ghost_b = [list(r) for r in ghost_a]
+    ghost_b[11] = list("   WW WW WW WW  ")
+    pal_g = {' ': (0,0,0,0), 'W': (230,230,255,255), 'K': (20,20,30,255), 'R':(230,90,120,255)}
+    frames_g = [_px(ghost_a, pal_g, 16, 16, 2), _px(ghost_b, pal_g, 16, 16, 2)]
+    sprites.append(Sprite(name="Lil Ghost", fps=4, frames=[SpriteFrame(data=f) for f in frames_g],
+                          tags=["idle","move"], built_in=True, width=32, height=32))
+
+    # --- STAR (spinning/pulsing)
+    def star_grid(scale_val):
+        g = [[' ']*16 for _ in range(16)]
+        cx, cy = 8, 8
+        for y in range(16):
+            for x in range(16):
+                d = abs(x-cx) + abs(y-cy)
+                if d <= scale_val:
+                    g[y][x] = 'Y'
+                elif d <= scale_val+1:
+                    g[y][x] = 'O'
+        return [''.join(r) for r in g]
+    pal_s = {' ':(0,0,0,0), 'Y':(250,204,21,255), 'O':(220,38,38,255)}
+    frames_s = [_px(star_grid(i), pal_s, 16, 16, 2) for i in [3,4,5,4]]
+    sprites.append(Sprite(name="Pulse Star", fps=8, frames=[SpriteFrame(data=f) for f in frames_s],
+                          tags=["move","drag"], built_in=True, width=32, height=32))
+
+    # --- ARROW (grab cursor for drag)
+    arrow = [
+        "H               ",
+        "HH              ",
+        "HHH             ",
+        "HHHH            ",
+        "HHHHH           ",
+        "HHHHHH          ",
+        "HHHHHHH         ",
+        "HHHHHHHH        ",
+        "HHHHHHHHH       ",
+        "HHHHHH          ",
+        "HHHHH           ",
+        "HHHH            ",
+        "HH HH           ",
+        "H   HH          ",
+        "     HH         ",
+        "                ",
+    ]
+    pal_a = {' ':(0,0,0,0), 'H':(220,38,38,255)}
+    sprites.append(Sprite(name="Crimson Arrow", fps=1,
+                          frames=[SpriteFrame(data=_px(arrow, pal_a, 16, 16, 2))],
+                          tags=["drag","resize"], built_in=True, width=32, height=32))
+
+    # --- X (close)
+    xg = [
+        "                ",
+        "  R          R  ",
+        "  RR        RR  ",
+        "   RR      RR   ",
+        "    RR    RR    ",
+        "     RR  RR     ",
+        "      RRRR      ",
+        "       RR       ",
+        "      RRRR      ",
+        "     RR  RR     ",
+        "    RR    RR    ",
+        "   RR      RR   ",
+        "  RR        RR  ",
+        "  R          R  ",
+        "                ",
+        "                ",
+    ]
+    pal_x = {' ':(0,0,0,0), 'R':(239,68,68,255)}
+    sprites.append(Sprite(name="X-Burst", fps=1,
+                          frames=[SpriteFrame(data=_px(xg, pal_x, 16, 16, 2))],
+                          tags=["close"], built_in=True, width=32, height=32))
+
+    # --- DOWN-ARROW (minimize)
+    dg = [
+        "                ",
+        "     YYYYYY     ",
+        "     YYYYYY     ",
+        "     YYYYYY     ",
+        "     YYYYYY     ",
+        "     YYYYYY     ",
+        "  YYYYYYYYYYYY  ",
+        "   YYYYYYYYYY   ",
+        "    YYYYYYYY    ",
+        "     YYYYYY     ",
+        "      YYYY      ",
+        "       YY       ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+    ]
+    pal_d = {' ':(0,0,0,0), 'Y':(250,204,21,255)}
+    sprites.append(Sprite(name="Minimize Pop", fps=1,
+                          frames=[SpriteFrame(data=_px(dg, pal_d, 16, 16, 2))],
+                          tags=["minimize"], built_in=True, width=32, height=32))
+
+    return sprites
+
+
+# ---------- Routes ----------
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Mouseferatu API up", "service": "desktop-companion"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+@api_router.get("/sprites", response_model=List[Sprite])
+async def list_sprites():
+    docs = await db.sprites.find({}, {"_id": 0}).to_list(1000)
+    return docs
 
-# Include the router in the main app
+
+@api_router.post("/sprites", response_model=Sprite)
+async def create_sprite(input: SpriteCreate):
+    s = Sprite(**input.model_dump())
+    await db.sprites.insert_one(s.model_dump())
+    return s
+
+
+@api_router.get("/sprites/{sprite_id}", response_model=Sprite)
+async def get_sprite(sprite_id: str):
+    doc = await db.sprites.find_one({"id": sprite_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Sprite not found")
+    return doc
+
+
+@api_router.put("/sprites/{sprite_id}", response_model=Sprite)
+async def update_sprite(sprite_id: str, input: SpriteUpdate):
+    update_data = {k: v for k, v in input.model_dump().items() if v is not None}
+    if not update_data:
+        doc = await db.sprites.find_one({"id": sprite_id}, {"_id": 0})
+        if not doc:
+            raise HTTPException(status_code=404, detail="Sprite not found")
+        return doc
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.sprites.update_one({"id": sprite_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Sprite not found")
+    doc = await db.sprites.find_one({"id": sprite_id}, {"_id": 0})
+    return doc
+
+
+@api_router.delete("/sprites/{sprite_id}")
+async def delete_sprite(sprite_id: str):
+    doc = await db.sprites.find_one({"id": sprite_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Sprite not found")
+    if doc.get("built_in"):
+        raise HTTPException(status_code=400, detail="Cannot delete built-in sprites")
+    await db.sprites.delete_one({"id": sprite_id})
+    return {"ok": True}
+
+
+@api_router.post("/sprites/seed", response_model=List[Sprite])
+async def seed_defaults():
+    # Remove existing built-ins and re-seed (idempotent refresh)
+    await db.sprites.delete_many({"built_in": True})
+    defaults = _build_defaults()
+    await db.sprites.insert_many([d.model_dump() for d in defaults])
+    return defaults
+
+
+@api_router.get("/settings", response_model=Settings)
+async def get_settings():
+    doc = await db.settings.find_one({"id": "user"}, {"_id": 0})
+    if not doc:
+        s = Settings()
+        await db.settings.insert_one(s.model_dump())
+        return s
+    return doc
+
+
+@api_router.put("/settings", response_model=Settings)
+async def update_settings(input: SettingsUpdate):
+    update_data = {k: v for k, v in input.model_dump().items() if v is not None}
+    doc = await db.settings.find_one({"id": "user"}, {"_id": 0})
+    if not doc:
+        s = Settings(**update_data) if update_data else Settings()
+        await db.settings.insert_one(s.model_dump())
+        return s
+    if update_data:
+        await db.settings.update_one({"id": "user"}, {"$set": update_data})
+    doc = await db.settings.find_one({"id": "user"}, {"_id": 0})
+    return doc
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -77,12 +384,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+
+@app.on_event("startup")
+async def startup_seed():
+    """Auto-seed defaults on first boot if sprite collection is empty."""
+    count = await db.sprites.count_documents({})
+    if count == 0:
+        defaults = _build_defaults()
+        await db.sprites.insert_many([d.model_dump() for d in defaults])
+        logger.info("Seeded %d default sprites", len(defaults))
+    # ensure settings doc
+    if not await db.settings.find_one({"id": "user"}):
+        await db.settings.insert_one(Settings().model_dump())
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

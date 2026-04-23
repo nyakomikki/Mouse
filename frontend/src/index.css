@@ -2,114 +2,81 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body, #root { height: 100%; }
+
 body {
     margin: 0;
-    font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-        sans-serif;
+    background: #0A0A0A;
+    color: #FAFAFA;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
 }
 
-code {
-    font-family:
-        source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+code, .font-mono {
+    font-family: 'IBM Plex Mono', Menlo, Monaco, Consolas, monospace;
 }
+
+::selection { background: #FAFAFA; color: #0A0A0A; }
+
+.pixelated { image-rendering: pixelated; image-rendering: -moz-crisp-edges; image-rendering: crisp-edges; }
+
+.dot-grid {
+    background-color: #0A0A0A;
+    background-image: radial-gradient(#1f1f1f 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+.scroll-mini::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll-mini::-webkit-scrollbar-thumb { background: #2E2E2E; }
+.scroll-mini::-webkit-scrollbar-track { background: transparent; }
+
+/* Hide the native cursor over the desktop (we draw our own sprite companion alongside). */
+.hide-cursor, .hide-cursor * { cursor: none !important; }
+
+@keyframes wiggle {
+    0%, 100% { transform: translate(0,0) rotate(0deg); }
+    25% { transform: translate(-2px, 1px) rotate(-3deg); }
+    75% { transform: translate(2px, -1px) rotate(3deg); }
+}
+.wiggle { animation: wiggle 0.4s ease-in-out; }
+
+@keyframes pop-fade {
+    0% { transform: scale(0.6); opacity: 0; }
+    40% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+.pop-fade { animation: pop-fade 220ms ease-out; }
 
 @layer base {
     :root {
-        --background: 0 0% 100%;
-        --foreground: 0 0% 3.9%;
-        --card: 0 0% 100%;
-        --card-foreground: 0 0% 3.9%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 0 0% 3.9%;
-        --primary: 0 0% 9%;
-        --primary-foreground: 0 0% 98%;
-        --secondary: 0 0% 96.1%;
-        --secondary-foreground: 0 0% 9%;
-        --muted: 0 0% 96.1%;
-        --muted-foreground: 0 0% 45.1%;
-        --accent: 0 0% 96.1%;
-        --accent-foreground: 0 0% 9%;
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 89.8%;
-        --input: 0 0% 89.8%;
-        --ring: 0 0% 3.9%;
-        --chart-1: 12 76% 61%;
-        --chart-2: 173 58% 39%;
-        --chart-3: 197 37% 24%;
-        --chart-4: 43 74% 66%;
-        --chart-5: 27 87% 67%;
-        --radius: 0.5rem;
-    }
-    .dark {
         --background: 0 0% 3.9%;
         --foreground: 0 0% 98%;
-        --card: 0 0% 3.9%;
+        --card: 0 0% 6.7%;
         --card-foreground: 0 0% 98%;
-        --popover: 0 0% 3.9%;
+        --popover: 0 0% 10.2%;
         --popover-foreground: 0 0% 98%;
         --primary: 0 0% 98%;
         --primary-foreground: 0 0% 9%;
-        --secondary: 0 0% 14.9%;
+        --secondary: 0 0% 10.2%;
         --secondary-foreground: 0 0% 98%;
-        --muted: 0 0% 14.9%;
-        --muted-foreground: 0 0% 63.9%;
-        --accent: 0 0% 14.9%;
+        --muted: 0 0% 10.2%;
+        --muted-foreground: 0 0% 53%;
+        --accent: 0 72% 51%;
         --accent-foreground: 0 0% 98%;
-        --destructive: 0 62.8% 30.6%;
+        --destructive: 0 72% 51%;
         --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 14.9%;
-        --input: 0 0% 14.9%;
-        --ring: 0 0% 83.1%;
-        --chart-1: 220 70% 50%;
-        --chart-2: 160 60% 45%;
-        --chart-3: 30 80% 55%;
-        --chart-4: 280 65% 60%;
-        --chart-5: 340 75% 55%;
+        --border: 0 0% 18%;
+        --input: 0 0% 18%;
+        --ring: 0 0% 98%;
+        --radius: 0.25rem;
     }
 }
 
 @layer base {
-    * {
-        @apply border-border;
-    }
-    body {
-        @apply bg-background text-foreground;
-    }
+    * { @apply border-border; }
 }
 
-@layer base {
-    [data-debug-wrapper="true"] {
-        display: contents !important;
-    }
-
-    [data-debug-wrapper="true"] > * {
-        margin-left: inherit;
-        margin-right: inherit;
-        margin-top: inherit;
-        margin-bottom: inherit;
-        padding-left: inherit;
-        padding-right: inherit;
-        padding-top: inherit;
-        padding-bottom: inherit;
-        column-gap: inherit;
-        row-gap: inherit;
-        gap: inherit;
-        border-left-width: inherit;
-        border-right-width: inherit;
-        border-top-width: inherit;
-        border-bottom-width: inherit;
-        border-left-style: inherit;
-        border-right-style: inherit;
-        border-top-style: inherit;
-        border-bottom-style: inherit;
-        border-left-color: inherit;
-        border-right-color: inherit;
-        border-top-color: inherit;
-        border-bottom-color: inherit;
-    }
-}
+[data-debug-wrapper="true"] { display: contents !important; }
+[data-debug-wrapper="true"] > * { margin-left: inherit; margin-right: inherit; margin-top: inherit; margin-bottom: inherit; padding-left: inherit; padding-right: inherit; padding-top: inherit; padding-bottom: inherit; column-gap: inherit; row-gap: inherit; gap: inherit; border-left-width: inherit; border-right-width: inherit; border-top-width: inherit; border-bottom-width: inherit; border-left-style: inherit; border-right-style: inherit; border-top-style: inherit; border-bottom-style: inherit; border-left-color: inherit; border-right-color: inherit; border-top-color: inherit; border-bottom-color: inherit; }
