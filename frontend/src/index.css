@@ -32,8 +32,15 @@ code, .font-mono {
 .scroll-mini::-webkit-scrollbar-thumb { background: #2E2E2E; }
 .scroll-mini::-webkit-scrollbar-track { background: transparent; }
 
-/* Hide the native cursor over the desktop (we draw our own sprite companion alongside). */
-.hide-cursor, .hide-cursor * { cursor: none !important; }
+/* Themed zombie cursor — a small green pixel arrow that replaces the default cursor */
+.zombie-cursor,
+.zombie-cursor * {
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='28' shape-rendering='crispEdges'><g fill='%236fa04f' stroke='%231a2e10' stroke-width='1'><polygon points='2,2 2,18 6,14 9,21 12,20 9,13 15,13'/></g><circle cx='11' cy='6' r='1.2' fill='%23dc2626'/></svg>") 2 2, crosshair;
+}
+.zombie-cursor input,
+.zombie-cursor textarea {
+    cursor: text;
+}
 
 @keyframes wiggle {
     0%, 100% { transform: translate(0,0) rotate(0deg); }

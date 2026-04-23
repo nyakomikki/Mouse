@@ -65,14 +65,18 @@ class Settings(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = "user"
     enabled: bool = True
-    sprite_size: int = 64
-    follow_speed: float = 0.18  # lerp factor
-    offset_x: int = 18
-    offset_y: int = 18
+    sprite_size: int = 56
+    follow_speed: float = 0.09  # lower = more chase / lag
+    offset_x: int = 30
+    offset_y: int = 30
     trail_enabled: bool = False
     state_map: Dict[str, Optional[str]] = Field(default_factory=lambda: {
-        "idle": None, "move": None, "drag": None,
-        "resize": None, "minimize": None, "close": None
+        "idle": "builtin-pixel-zombie",
+        "move": "builtin-pixel-zombie",
+        "drag": "builtin-pixel-zombie",
+        "resize": "builtin-pixel-zombie",
+        "minimize": "builtin-pixel-zombie",
+        "close": "builtin-pixel-zombie",
     })
 
 class SettingsUpdate(BaseModel):
@@ -118,8 +122,87 @@ def _px(color_idx_grid, palette, w=16, h=16, scale=2):
 
 
 def _build_defaults():
-    """Create default sprites (cat, ghost, star, arrow)."""
+    """Create default sprites (zombie, cat, ghost, star, arrows)."""
     sprites = []
+
+    # --- PIXEL ZOMBIE (the star of the show) — 4 frame shuffle/bob
+    # Palette
+    pal_z = {
+        ' ': (0, 0, 0, 0),
+        'K': (26, 46, 16, 255),    # dark outline (green-black)
+        'G': (90, 140, 70, 255),   # main zombie green
+        'L': (140, 180, 110, 255), # highlight light green
+        'W': (230, 230, 230, 255), # eye white
+        'E': (220, 38, 38, 255),   # red pupil
+        'R': (110, 26, 26, 255),   # wound dark
+        'B': (239, 68, 68, 255),   # blood bright
+    }
+
+    def zombie_frame(head_shift, arm_variant, mouth_variant):
+        g = [list("                ") for _ in range(16)]
+        # head (rows 1..6) shifted left/right by head_shift
+        head_lines = [
+            "     KKKKK      ",
+            "    KKGGGKK     ",
+            "   KGGLLGGGK    ",
+            "   KGWEKEWGK    ",
+            "   KGGGKGGGGK   ",
+        ]
+        mouth_lines = {
+            0: "   KGRRBBRRRGK  ",
+            1: "   KGRBBBBRRGK  ",
+            2: "   KGRRRBBRRGK  ",
+        }
+        head_lines.append(mouth_lines[mouth_variant])
+        for i, line in enumerate(head_lines):
+            # shift
+            shifted = list(line)
+            if head_shift > 0:
+                shifted = [' '] * head_shift + shifted[:-head_shift]
+            elif head_shift < 0:
+                shifted = shifted[-head_shift:] + [' '] * (-head_shift)
+            g[1 + i] = shifted
+
+        # neck/shoulders
+        g[7] = list("    KGGGGGGK    ")
+        g[8] = list("   KKGGGGGGKK   ")
+
+        # arms — variant A outstretched, variant B right-up, variant C left-up
+        if arm_variant == 0:
+            g[9]  = list("  KGG GGGG GGK  ")
+            g[10] = list("  GGG  GG  GGG  ")
+        elif arm_variant == 1:
+            g[9]  = list("  KGGKGGGG  GGK ")
+            g[10] = list("  GGG  GG   GGG ")
+        else:
+            g[9]  = list(" KGG  GGGGKGG   ")
+            g[10] = list(" GGG   GG  GGG  ")
+
+        # torso
+        g[11] = list("      GGGG      ")
+        g[12] = list("      GGGG      ")
+
+        # legs / feet
+        g[13] = list("     KG  GK     ")
+        g[14] = list("     KG  GK     ")
+        g[15] = list("    KKK  KKK    ")
+
+        return [''.join(r) for r in g]
+
+    z_frames = [
+        _px(zombie_frame(0, 0, 0), pal_z, 16, 16, 2),
+        _px(zombie_frame(1, 1, 1), pal_z, 16, 16, 2),
+        _px(zombie_frame(0, 0, 2), pal_z, 16, 16, 2),
+        _px(zombie_frame(-1, 2, 1), pal_z, 16, 16, 2),
+    ]
+    sprites.append(Sprite(
+        id="builtin-pixel-zombie",
+        name="Pixel Zombie",
+        fps=5,
+        frames=[SpriteFrame(data=f) for f in z_frames],
+        tags=["idle", "move", "drag", "resize", "minimize", "close"],
+        built_in=True, width=32, height=32,
+    ))
 
     # --- CAT (orange tabby) 4 idle frames blink+tail sway
     cat_base = [
@@ -391,15 +474,24 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("startup")
 async def startup_seed():
-    """Auto-seed defaults on first boot if sprite collection is empty."""
+    """Auto-seed defaults on first boot, or refresh when new built-ins are introduced."""
+    zombie = await db.sprites.find_one({"id": "builtin-pixel-zombie"})
     count = await db.sprites.count_documents({})
-    if count == 0:
+    if count == 0 or not zombie:
+        # Refresh built-ins (preserves user-created sprites)
+        await db.sprites.delete_many({"built_in": True})
         defaults = _build_defaults()
         await db.sprites.insert_many([d.model_dump() for d in defaults])
-        logger.info("Seeded %d default sprites", len(defaults))
-    # ensure settings doc
-    if not await db.settings.find_one({"id": "user"}):
+        logger.info("Seeded/refreshed %d default sprites", len(defaults))
+    # ensure settings doc references the zombie
+    current = await db.settings.find_one({"id": "user"})
+    if not current:
         await db.settings.insert_one(Settings().model_dump())
+    else:
+        sm = current.get("state_map") or {}
+        if not any(sm.values()):
+            fresh = Settings().model_dump()["state_map"]
+            await db.settings.update_one({"id": "user"}, {"$set": {"state_map": fresh}})
 
 
 @app.on_event("shutdown")

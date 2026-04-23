@@ -2,34 +2,59 @@ import React, { useEffect, useRef, useState } from "react";
 import { useDesktop } from "../context/DesktopContext";
 
 /**
- * Renders an animated sprite that smoothly follows the cursor.
- * Chooses which sprite to display based on current mouseState (via DesktopContext)
- * and settings.state_map. Falls back to any sprite whose `tags` include the state,
- * then to the first sprite in the library.
+ * Renders an animated sprite that "chases" the cursor with a trailing lag.
+ * The native cursor remains visible; the sprite trails behind it,
+ * offset opposite to the movement direction so it looks like it's running after.
  */
 export default function SpriteFollower({ sprites, settings }) {
   const { mouseState, transientState } = useDesktop();
   const containerRef = useRef(null);
-  const pos = useRef({ x: 0, y: 0 });
-  const target = useRef({ x: 0, y: 0 });
+  const imgRef = useRef(null);
+  const pos = useRef({ x: -200, y: -200 });
+  const target = useRef({ x: -200, y: -200 });
+  const vel = useRef({ x: 0, y: 0 });
   const [, force] = useState(0);
 
   // Mouse tracking + RAF lerp
   useEffect(() => {
+    let lastX = null, lastY = null;
     const onMove = (e) => {
+      if (lastX !== null) {
+        vel.current.x = vel.current.x * 0.7 + (e.clientX - lastX) * 0.3;
+        vel.current.y = vel.current.y * 0.7 + (e.clientY - lastY) * 0.3;
+      }
+      lastX = e.clientX; lastY = e.clientY;
       target.current = { x: e.clientX, y: e.clientY };
     };
     window.addEventListener("mousemove", onMove);
     let rafId;
     const tick = () => {
-      const speed = settings?.follow_speed ?? 0.18;
+      const speed = settings?.follow_speed ?? 0.09;
       pos.current.x += (target.current.x - pos.current.x) * speed;
       pos.current.y += (target.current.y - pos.current.y) * speed;
+      // decay velocity
+      vel.current.x *= 0.9;
+      vel.current.y *= 0.9;
       if (containerRef.current) {
-        const ox = settings?.offset_x ?? 18;
-        const oy = settings?.offset_y ?? 18;
+        // Trail behind: offset sprite opposite to cursor velocity direction
+        const baseOx = settings?.offset_x ?? 30;
+        const baseOy = settings?.offset_y ?? 30;
+        const speedMag = Math.hypot(vel.current.x, vel.current.y);
+        let trailX = 0, trailY = 0;
+        if (speedMag > 0.5) {
+          const nx = vel.current.x / speedMag;
+          const ny = vel.current.y / speedMag;
+          // push sprite backward along motion direction
+          trailX = -nx * Math.min(speedMag * 1.2, 40);
+          trailY = -ny * Math.min(speedMag * 1.2, 40);
+        }
         containerRef.current.style.transform =
-          `translate3d(${pos.current.x + ox}px, ${pos.current.y + oy}px, 0)`;
+          `translate3d(${pos.current.x + baseOx + trailX}px, ${pos.current.y + baseOy + trailY}px, 0)`;
+        // Flip horizontally based on direction to cursor
+        if (imgRef.current) {
+          const dx = target.current.x - pos.current.x;
+          imgRef.current.style.transform = dx < -4 ? "scaleX(-1)" : "scaleX(1)";
+        }
       }
       rafId = requestAnimationFrame(tick);
     };
@@ -85,13 +110,14 @@ export default function SpriteFollower({ sprites, settings }) {
       }}
     >
       <img
+        ref={imgRef}
         src={src}
         alt={activeSprite.name}
         width={size}
         height={size}
         className={`pixelated select-none ${transientState ? "pop-fade" : ""} ${effectiveState === "drag" ? "wiggle" : ""}`}
         draggable={false}
-        style={{ userSelect: "none" }}
+        style={{ userSelect: "none", transition: "transform 120ms ease-out" }}
       />
     </div>
   );

@@ -51,7 +51,7 @@ function DesktopInner() {
   };
 
   return (
-    <div className="dot-grid relative h-screen w-screen overflow-hidden hide-cursor" data-testid="desktop-root">
+    <div className="dot-grid relative h-screen w-screen overflow-hidden zombie-cursor" data-testid="desktop-root">
       {/* Wallpaper tint */}
       <div
         className="absolute inset-0 pointer-events-none"
