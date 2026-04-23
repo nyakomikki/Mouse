@@ -66,11 +66,11 @@ export function FilesApp() {
 }
 
 export function PlaygroundApp() {
-  const { triggerTransient } = useDesktop();
+  const { triggerTransient, setAmbientState, ambientState } = useDesktop();
   return (
     <div className="p-6 space-y-4" data-testid="playground-app">
       <div className="text-xs font-mono uppercase tracking-[0.25em] text-[#888]">Trigger the companion</div>
-      <p className="text-sm text-[#aaa]">Fire each state manually and watch the sprite react.</p>
+      <p className="text-sm text-[#aaa]">Fire each state manually and watch the blob morph.</p>
       <div className="grid grid-cols-2 gap-2">
         {["idle","move","drag","resize","minimize","close"].map((s) => (
           <button
@@ -78,6 +78,17 @@ export function PlaygroundApp() {
             data-testid={`trigger-${s}`}
             onClick={() => triggerTransient(s)}
             className="px-3 py-2 text-xs font-mono uppercase tracking-widest border border-[#2E2E2E] hover:bg-[#1A1A1A] hover:border-[#FAFAFA] transition-all"
+          >{s}</button>
+        ))}
+      </div>
+      <div className="text-xs font-mono uppercase tracking-[0.25em] text-[#888] pt-2">Ambient states</div>
+      <div className="grid grid-cols-2 gap-2">
+        {["music","video","audio","afk"].map((s) => (
+          <button
+            key={s}
+            data-testid={`ambient-${s}`}
+            onClick={() => setAmbientState(ambientState === s ? null : s)}
+            className={`px-3 py-2 text-xs font-mono uppercase tracking-widest border transition-all ${ambientState === s ? "bg-[#FAFAFA] text-[#0A0A0A] border-[#FAFAFA]" : "border-[#2E2E2E] hover:bg-[#1A1A1A] hover:border-[#FAFAFA]"}`}
           >{s}</button>
         ))}
       </div>

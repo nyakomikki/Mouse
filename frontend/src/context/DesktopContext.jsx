@@ -15,9 +15,12 @@ const initialWindows = [
 
 export function DesktopProvider({ children }) {
   const [windows, setWindows] = useState(initialWindows);
-  // Transient mouse state tag: 'idle' | 'move' | 'drag' | 'resize' | 'minimize' | 'close'
+  // Direct user-interaction state: 'idle' | 'move' | 'drag' | 'resize'
   const [mouseState, setMouseState] = useState("idle");
-  const [transientState, setTransientState] = useState(null); // pulse e.g. 'minimize'
+  // Brief pulses triggered by specific events: 'minimize' | 'close'
+  const [transientState, setTransientState] = useState(null);
+  // Ambient / context state: 'music' | 'video' | 'audio' | 'afk' | null
+  const [ambientState, setAmbientState] = useState(null);
   const [spritesRefreshKey, setSpritesRefreshKey] = useState(0);
 
   const openWindow = useCallback((app, opts = {}) => {
@@ -86,11 +89,13 @@ export function DesktopProvider({ children }) {
       setMouseState,
       transientState,
       triggerTransient,
+      ambientState,
+      setAmbientState,
       spritesRefreshKey,
       bumpSprites,
     }),
     [windows, openWindow, closeWindow, minimizeWindow, focusWindow, updateWindow,
-     mouseState, transientState, triggerTransient, spritesRefreshKey, bumpSprites]
+     mouseState, transientState, triggerTransient, ambientState, spritesRefreshKey, bumpSprites]
   );
 
   return <DesktopContext.Provider value={value}>{children}</DesktopContext.Provider>;
@@ -102,27 +107,37 @@ export const useDesktop = () => {
   return v;
 };
 
-// Keeps mouse state automatically in sync with activity (idle fallback).
-export function useAutoIdle() {
-  const { setMouseState, mouseState } = useDesktop();
+// Keeps mouse state automatically in sync with activity (idle fallback) + AFK detection
+export function useAutoIdle(afkTimeoutSec = 30) {
+  const { setMouseState, mouseState, setAmbientState, ambientState } = useDesktop();
   useEffect(() => {
-    let last = Date.now();
+    let lastActivity = Date.now();
+    let lastMove = Date.now();
     let timer;
-    const onMove = () => {
-      last = Date.now();
+    const activity = () => { lastActivity = Date.now(); if (ambientState === "afk") setAmbientState(null); };
+    const onMove = (e) => {
+      lastMove = Date.now();
+      lastActivity = Date.now();
+      if (ambientState === "afk") setAmbientState(null);
       if (mouseState === "idle") setMouseState("move");
     };
     const check = () => {
-      if (Date.now() - last > 450 && (mouseState === "move")) {
-        setMouseState("idle");
+      const now = Date.now();
+      if (now - lastMove > 450 && mouseState === "move") setMouseState("idle");
+      if (now - lastActivity > afkTimeoutSec * 1000 && ambientState !== "afk") {
+        setAmbientState("afk");
       }
-      timer = setTimeout(check, 150);
+      timer = setTimeout(check, 250);
     };
     window.addEventListener("mousemove", onMove);
-    timer = setTimeout(check, 150);
+    window.addEventListener("keydown", activity);
+    window.addEventListener("mousedown", activity);
+    timer = setTimeout(check, 250);
     return () => {
       window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("keydown", activity);
+      window.removeEventListener("mousedown", activity);
       clearTimeout(timer);
     };
-  }, [mouseState, setMouseState]);
+  }, [mouseState, setMouseState, ambientState, setAmbientState, afkTimeoutSec]);
 }

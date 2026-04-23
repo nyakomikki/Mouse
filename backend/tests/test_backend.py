@@ -1,10 +1,14 @@
-"""Backend tests for Mouseferatu desktop companion API."""
+"""Backend tests for Mouseferatu desktop companion API (iteration 2: 10 blobs + new settings)."""
 import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://cursor-animator.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ['REACT_APP_BACKEND_URL'].rstrip('/')
 API = f"{BASE_URL}/api"
+
+BLOB_STATES = ["idle", "move", "drag", "resize", "minimize", "close",
+               "music", "video", "audio", "afk"]
+BUILTIN_BLOB_IDS = [f"builtin-blob-{s}" for s in BLOB_STATES]
 
 
 @pytest.fixture(scope="module")
@@ -21,16 +25,26 @@ class TestSprites:
         assert r.status_code == 200
         assert "Mouseferatu" in r.json().get("message", "")
 
-    def test_list_seeded_sprites(self, client):
+    def test_list_has_10_blob_variants(self, client):
         r = client.get(f"{API}/sprites")
         assert r.status_code == 200
         data = r.json()
-        names = [s["name"] for s in data if s.get("built_in")]
-        for expected in ["Tabby Cat", "Lil Ghost", "Pulse Star", "Crimson Arrow", "X-Burst", "Minimize Pop"]:
-            assert expected in names, f"Missing built-in: {expected}"
-        # Must be 6 built-ins
-        built_ins = [s for s in data if s.get("built_in")]
-        assert len(built_ins) == 6
+        ids = {s["id"] for s in data}
+        for bid in BUILTIN_BLOB_IDS:
+            assert bid in ids, f"Missing built-in blob: {bid}"
+        # Total built-ins: 10 blob variants + 6 extras (Tabby Cat, Ghost, Star, Arrow, X, Minimize Pop) = 16
+        builtins = [s for s in data if s.get("built_in")]
+        assert len(builtins) == 16, f"Expected 16 built-ins, got {len(builtins)}"
+
+    def test_blob_sprites_have_frames(self, client):
+        r = client.get(f"{API}/sprites")
+        data = r.json()
+        by_id = {s["id"]: s for s in data}
+        for bid in BUILTIN_BLOB_IDS:
+            sp = by_id[bid]
+            assert len(sp["frames"]) >= 1
+            assert sp["frames"][0]["data"].startswith("data:image/png;base64,")
+            assert sp["width"] == 32 and sp["height"] == 32
 
     def test_create_update_delete_sprite(self, client):
         payload = {
@@ -43,71 +57,98 @@ class TestSprites:
         assert cr.status_code == 200
         created = cr.json()
         assert created["name"] == "TEST_CustomSprite"
-        assert "id" in created and created["id"]
         assert created.get("built_in") is False
         sid = created["id"]
 
-        # GET to confirm persistence
         g = client.get(f"{API}/sprites/{sid}")
         assert g.status_code == 200
         assert g.json()["name"] == "TEST_CustomSprite"
 
-        # PUT update name
         u = client.put(f"{API}/sprites/{sid}", json={"name": "TEST_Renamed"})
         assert u.status_code == 200
         assert u.json()["name"] == "TEST_Renamed"
 
-        # verify persistence
         g2 = client.get(f"{API}/sprites/{sid}")
         assert g2.json()["name"] == "TEST_Renamed"
 
-        # DELETE custom
         d = client.delete(f"{API}/sprites/{sid}")
         assert d.status_code == 200
-
-        # 404 after delete
         assert client.get(f"{API}/sprites/{sid}").status_code == 404
 
     def test_delete_builtin_rejected(self, client):
-        r = client.get(f"{API}/sprites")
-        builtin = next(s for s in r.json() if s.get("built_in"))
-        d = client.delete(f"{API}/sprites/{builtin['id']}")
+        d = client.delete(f"{API}/sprites/builtin-blob-idle")
         assert d.status_code == 400
 
     def test_seed_endpoint(self, client):
         r = client.post(f"{API}/sprites/seed")
         assert r.status_code == 200
-        assert len(r.json()) == 6
-        # Verify all 6 built-ins still present
-        lst = client.get(f"{API}/sprites").json()
-        assert len([s for s in lst if s.get("built_in")]) == 6
+        seeded = r.json()
+        # seed returns all default built-ins (10 blob forms + 6 extras)
+        assert len(seeded) == 16
+        ids = {s["id"] for s in seeded}
+        for bid in BUILTIN_BLOB_IDS:
+            assert bid in ids
 
 
 # --- Settings ---
 class TestSettings:
-    def test_get_default_settings(self, client):
+    def test_get_default_settings_new_fields(self, client):
         r = client.get(f"{API}/settings")
         assert r.status_code == 200
         data = r.json()
-        assert "state_map" in data
-        for k in ["idle", "move", "drag", "resize", "minimize", "close"]:
-            assert k in data["state_map"]
-        assert data.get("enabled") is True
+        # new fields present with expected defaults
+        assert data.get("cursor_theme") == "zombie"
+        assert data.get("cursor_size") == "md"
+        assert data.get("show_in_tray") is True
+        assert data.get("click_flash") is False
+        assert data.get("afk_timeout_sec") == 30
+        assert data.get("reduce_motion") is False
+        # state_map has all 10 keys mapped to builtin-blob-*
+        sm = data["state_map"]
+        for k in BLOB_STATES:
+            assert k in sm, f"state_map missing '{k}'"
+            assert sm[k] == f"builtin-blob-{k}", f"{k} -> {sm[k]} (expected builtin-blob-{k})"
 
-    def test_update_settings_state_map(self, client):
-        # get existing built-in sprite id to assign
+    def test_partial_update_new_fields(self, client):
+        payload = {
+            "cursor_theme": "classic",
+            "cursor_size": "lg",
+            "show_in_tray": False,
+            "click_flash": True,
+            "afk_timeout_sec": 90,
+            "reduce_motion": True,
+        }
+        u = client.put(f"{API}/settings", json=payload)
+        assert u.status_code == 200
+        body = u.json()
+        for k, v in payload.items():
+            assert body[k] == v, f"{k} did not persist: {body[k]} != {v}"
+
+        g = client.get(f"{API}/settings").json()
+        for k, v in payload.items():
+            assert g[k] == v, f"{k} not persisted after re-fetch"
+
+        # Revert to defaults so other tests aren't affected
+        revert = {
+            "cursor_theme": "zombie", "cursor_size": "md",
+            "show_in_tray": True, "click_flash": False,
+            "afk_timeout_sec": 30, "reduce_motion": False,
+        }
+        client.put(f"{API}/settings", json=revert)
+
+    def test_update_state_map_preserves_10(self, client):
+        # Set idle to a custom sprite, confirm other 9 keys preserved
         sprites = client.get(f"{API}/sprites").json()
         sid = next(s["id"] for s in sprites if s["name"] == "Tabby Cat")
-        new_state_map = {
-            "idle": sid, "move": None, "drag": None,
-            "resize": None, "minimize": None, "close": None
-        }
-        u = client.put(f"{API}/settings", json={"state_map": new_state_map, "sprite_size": 72})
+        current_sm = client.get(f"{API}/settings").json()["state_map"]
+        new_sm = dict(current_sm)
+        new_sm["idle"] = sid
+        u = client.put(f"{API}/settings", json={"state_map": new_sm})
         assert u.status_code == 200
-        assert u.json()["state_map"]["idle"] == sid
-        assert u.json()["sprite_size"] == 72
-
-        # re-fetch
-        g = client.get(f"{API}/settings").json()
-        assert g["state_map"]["idle"] == sid
-        assert g["sprite_size"] == 72
+        body = u.json()
+        assert body["state_map"]["idle"] == sid
+        # make sure other 9 keys still present
+        for k in BLOB_STATES:
+            assert k in body["state_map"]
+        # revert
+        client.put(f"{API}/settings", json={"state_map": current_sm})

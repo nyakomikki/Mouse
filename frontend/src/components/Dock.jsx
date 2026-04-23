@@ -1,10 +1,11 @@
 import React from "react";
-import { Settings, Palette, FileText, FolderOpen, Gamepad2 } from "lucide-react";
+import { Settings, Palette, FileText, FolderOpen, Gamepad2, Music } from "lucide-react";
 import { useDesktop } from "../context/DesktopContext";
 
 const items = [
-  { app: "settings", icon: Settings, label: "Settings", w: 560, h: 560 },
+  { app: "settings", icon: Settings, label: "Settings", w: 620, h: 640 },
   { app: "editor", icon: Palette, label: "Sprite Editor", w: 1100, h: 720 },
+  { app: "media", icon: Music, label: "Media", w: 560, h: 620 },
   { app: "notepad", icon: FileText, label: "Notepad", w: 520, h: 420 },
   { app: "files", icon: FolderOpen, label: "Files", w: 640, h: 480 },
   { app: "playground", icon: Gamepad2, label: "Playground", w: 560, h: 400 },

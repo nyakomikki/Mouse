@@ -32,15 +32,54 @@ code, .font-mono {
 .scroll-mini::-webkit-scrollbar-thumb { background: #2E2E2E; }
 .scroll-mini::-webkit-scrollbar-track { background: transparent; }
 
-/* Themed zombie cursor — a small green pixel arrow that replaces the default cursor */
+/* Themed cursors — pick via .zombie-cursor / .classic-cursor / .off-cursor on a parent */
 .zombie-cursor,
 .zombie-cursor * {
     cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='28' shape-rendering='crispEdges'><g fill='%236fa04f' stroke='%231a2e10' stroke-width='1'><polygon points='2,2 2,18 6,14 9,21 12,20 9,13 15,13'/></g><circle cx='11' cy='6' r='1.2' fill='%23dc2626'/></svg>") 2 2, crosshair;
 }
+.cursor-sm.zombie-cursor,
+.cursor-sm.zombie-cursor * {
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='20' shape-rendering='crispEdges'><g fill='%236fa04f' stroke='%231a2e10' stroke-width='1'><polygon points='2,2 2,14 5,11 7,16 9,15 7,10 12,10'/></g></svg>") 2 2, crosshair;
+}
+.cursor-lg.zombie-cursor,
+.cursor-lg.zombie-cursor * {
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='40' shape-rendering='crispEdges'><g fill='%236fa04f' stroke='%231a2e10' stroke-width='1.5'><polygon points='3,3 3,28 9,22 14,32 18,30 13,20 22,20'/></g><circle cx='16' cy='9' r='2' fill='%23dc2626'/></svg>") 3 3, crosshair;
+}
+.classic-cursor,
+.classic-cursor * { cursor: default; }
+.classic-cursor input,
+.classic-cursor textarea { cursor: text; }
+.classic-cursor button,
+.classic-cursor [role="button"] { cursor: pointer; }
+.off-cursor,
+.off-cursor * { cursor: none !important; }
 .zombie-cursor input,
 .zombie-cursor textarea {
     cursor: text;
 }
+
+/* Click flash — brief radial burst centered on click */
+@keyframes click-flash-anim {
+    0% { opacity: 0.7; transform: scale(0.3); }
+    100% { opacity: 0; transform: scale(1.8); }
+}
+.click-flash-dot {
+    position: fixed;
+    pointer-events: none;
+    width: 24px; height: 24px;
+    border-radius: 9999px;
+    border: 2px solid #6fa04f;
+    margin-left: -12px; margin-top: -12px;
+    animation: click-flash-anim 380ms ease-out forwards;
+    z-index: 99998;
+}
+
+/* Tray icon subtle pulse */
+@keyframes tray-pulse {
+    0%, 100% { opacity: 0.9; }
+    50% { opacity: 0.55; }
+}
+.tray-pulse { animation: tray-pulse 2.2s ease-in-out infinite; }
 
 @keyframes wiggle {
     0%, 100% { transform: translate(0,0) rotate(0deg); }

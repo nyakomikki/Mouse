@@ -70,6 +70,16 @@ class Settings(BaseModel):
     offset_x: int = 30
     offset_y: int = 30
     trail_enabled: bool = False
+    # Cursor theming (applies to the native pointer the OS/browser shows)
+    cursor_theme: str = "zombie"   # "zombie" | "classic" | "off"
+    cursor_size: str = "md"         # "sm" | "md" | "lg"
+    # Tray & feedback
+    show_in_tray: bool = True
+    click_flash: bool = False
+    # AFK timing (in seconds). When the user is inactive this long, ambient = afk.
+    afk_timeout_sec: int = 30
+    # Performance mode — drops frame cycling when tab hidden / reduces motion
+    reduce_motion: bool = False
     state_map: Dict[str, Optional[str]] = Field(default_factory=lambda: {
         "idle": "builtin-blob-idle",
         "move": "builtin-blob-move",
@@ -77,6 +87,10 @@ class Settings(BaseModel):
         "resize": "builtin-blob-resize",
         "minimize": "builtin-blob-minimize",
         "close": "builtin-blob-close",
+        "music": "builtin-blob-music",
+        "video": "builtin-blob-video",
+        "audio": "builtin-blob-audio",
+        "afk": "builtin-blob-afk",
     })
 
 class SettingsUpdate(BaseModel):
@@ -86,6 +100,12 @@ class SettingsUpdate(BaseModel):
     offset_x: Optional[int] = None
     offset_y: Optional[int] = None
     trail_enabled: Optional[bool] = None
+    cursor_theme: Optional[str] = None
+    cursor_size: Optional[str] = None
+    show_in_tray: Optional[bool] = None
+    click_flash: Optional[bool] = None
+    afk_timeout_sec: Optional[int] = None
+    reduce_motion: Optional[bool] = None
     state_map: Optional[Dict[str, Optional[str]]] = None
 
 
@@ -437,6 +457,196 @@ def _build_defaults():
         tags=["close"], built_in=True, width=32, height=32,
     ))
 
+    # ---------- MUSIC: bouncing blob with a hovering music note ----------
+    music_a = [
+        "       K        ",
+        "      KK        ",
+        "     KKK        ",
+        "     KK         ",
+        "                ",
+        "     KKKKKK     ",
+        "    KLLLLLLK    ",
+        "   KLGGGGGGGK   ",
+        "   KLGWWGGLGK   ",
+        "   KGLWBGGGGK   ",
+        "   KGLWGGGGLK   ",
+        "   KGGGGGGGGK   ",
+        "    KGGGGGGK    ",
+        "     KKKKKK     ",
+        "      K  K      ",
+        "       KK       ",
+    ]
+    music_b = [
+        "                ",
+        "        K       ",
+        "       KK       ",
+        "      KKK       ",
+        "      KK        ",
+        "                ",
+        "     KKKKKK     ",
+        "    KLLLLLLK    ",
+        "   KLGGGGGGGK   ",
+        "   KLGWWGGLGK   ",
+        "   KGLWBGGGGK   ",
+        "   KGLWGGGGLK   ",
+        "   KGGGGGGGGK   ",
+        "    KGGGGGGK    ",
+        "     KKKKKK     ",
+        "       KK       ",
+    ]
+    music_c = [
+        "     K          ",
+        "    KK    K     ",
+        "   KKK   KK     ",
+        "   KK    KKK    ",
+        "          KK    ",
+        "                ",
+        "     KKKKKK     ",
+        "    KLLLLLLK    ",
+        "   KLGGGGGGGK   ",
+        "   KLGWWGGLGK   ",
+        "   KGLWBGGGGK   ",
+        "   KGLWGGGGLK   ",
+        "   KGGGGGGGGK   ",
+        "    KGGGGGGK    ",
+        "     KKKKKK     ",
+        "      K  K      ",
+    ]
+    sprites.append(Sprite(
+        id="builtin-blob-music", name="Blob · Music",
+        fps=6, frames=[SpriteFrame(data=blob(f)) for f in [music_a, music_b, music_c, music_b]],
+        tags=["music"], built_in=True, width=32, height=32,
+    ))
+
+    # ---------- VIDEO: wide horizontal blob with two darting eyes ----------
+    video_a = [
+        "                ",
+        "                ",
+        "                ",
+        "    KKKKKKKK    ",
+        "   KLLLLLLLLK   ",
+        "  KGGWWGGWWGGK  ",
+        "  KGGWBGGWBGGK  ",
+        "  KGGGGGGGGGGK  ",
+        "  KGGRRSRSRGGK  ",
+        "   KKGGGGGGKK   ",
+        "     KKKKKK     ",
+        "      K  K      ",
+        "       KK       ",
+        "                ",
+        "                ",
+        "                ",
+    ]
+    video_b = [
+        "                ",
+        "                ",
+        "                ",
+        "    KKKKKKKK    ",
+        "   KLLLLLLLLK   ",
+        "  KGGWWGGWWGGK  ",
+        "  KGGBWGGBWGGK  ",
+        "  KGGGGGGGGGGK  ",
+        "  KGGSRRSSSRGGK ",
+        "   KKGGGGGGKK   ",
+        "     KKKKKK     ",
+        "      K  K      ",
+        "       KK       ",
+        "                ",
+        "                ",
+        "                ",
+    ]
+    sprites.append(Sprite(
+        id="builtin-blob-video", name="Blob · Video",
+        fps=4, frames=[SpriteFrame(data=blob(f)) for f in [video_a, video_b]],
+        tags=["video"], built_in=True, width=32, height=32,
+    ))
+
+    # ---------- AUDIO: idle blob with radiating sound waves ----------
+    audio_a = [
+        "                ",
+        "                ",
+        "           K    ",
+        "     KKKKKKK    ",
+        "    KLLLLLLGK K ",
+        "   KLGGGGGGGK   ",
+        "   KLGWWGGLGK K ",
+        "   KGLWBGGGGK   ",
+        "   KGLWGGGGLK K ",
+        "   KGGGGGGGGK   ",
+        "    KGGGGGGK  K ",
+        "     KKKKKK     ",
+        "      K  K      ",
+        "       KK       ",
+        "                ",
+        "                ",
+    ]
+    audio_b = [
+        "                ",
+        "          K     ",
+        "         KK K   ",
+        "     KKKKKK  K  ",
+        "    KLLLLLLGK K ",
+        "   KLGGGGGGGK   ",
+        "   KLGWWGGLGKKK ",
+        "   KGLWBGGGGK K ",
+        "   KGLWGGGGLKKK ",
+        "   KGGGGGGGGK   ",
+        "    KGGGGGGK K  ",
+        "     KKKKKK K   ",
+        "      K  K      ",
+        "       KK       ",
+        "                ",
+        "                ",
+    ]
+    sprites.append(Sprite(
+        id="builtin-blob-audio", name="Blob · Audio",
+        fps=6, frames=[SpriteFrame(data=blob(f)) for f in [audio_a, audio_b]],
+        tags=["audio"], built_in=True, width=32, height=32,
+    ))
+
+    # ---------- AFK: sleeping blob with Zzz ----------
+    afk_a = [
+        "       K        ",
+        "      KKK       ",
+        "       K  K     ",
+        "         KKK    ",
+        "           K    ",
+        "                ",
+        "     KKKKKK     ",
+        "    KLLLLLLK    ",
+        "   KLGGGGGGGK   ",
+        "   KLKKKGGLGK   ",
+        "   KGLGGGGGGK   ",
+        "   KGGGGGGGGK   ",
+        "    KGGGGGGK    ",
+        "     KKKKKK     ",
+        "      K  K      ",
+        "       KK       ",
+    ]
+    afk_b = [
+        "      K         ",
+        "     KKK        ",
+        "      K   K     ",
+        "         KKK    ",
+        "          K     ",
+        "            K   ",
+        "     KKKKKK KK  ",
+        "    KLLLLLLK K  ",
+        "   KLGGGGGGGK   ",
+        "   KLKKKGGLGK   ",
+        "   KGLGGGGGGK   ",
+        "   KGGGGGGGGK   ",
+        "    KGGGGGGK    ",
+        "     KKKKKK     ",
+        "      K  K      ",
+        "       KK       ",
+    ]
+    sprites.append(Sprite(
+        id="builtin-blob-afk", name="Blob · AFK",
+        fps=3, frames=[SpriteFrame(data=blob(f)) for f in [afk_a, afk_b]],
+        tags=["afk"], built_in=True, width=32, height=32,
+    ))
+
     # --- CAT (orange tabby) 4 idle frames blink+tail sway
     cat_base = [
         "                ",
@@ -708,23 +918,38 @@ logger = logging.getLogger(__name__)
 @app.on_event("startup")
 async def startup_seed():
     """Auto-seed defaults on first boot, or refresh when new built-ins are introduced."""
-    zombie = await db.sprites.find_one({"id": "builtin-pixel-zombie"})
+    latest = await db.sprites.find_one({"id": "builtin-blob-afk"})
     count = await db.sprites.count_documents({})
-    if count == 0 or not zombie:
-        # Refresh built-ins (preserves user-created sprites)
+    if count == 0 or not latest:
         await db.sprites.delete_many({"built_in": True})
         defaults = _build_defaults()
         await db.sprites.insert_many([d.model_dump() for d in defaults])
         logger.info("Seeded/refreshed %d default sprites", len(defaults))
-    # ensure settings doc references the zombie
     current = await db.settings.find_one({"id": "user"})
     if not current:
         await db.settings.insert_one(Settings().model_dump())
-    else:
-        sm = current.get("state_map") or {}
-        if not any(sm.values()):
-            fresh = Settings().model_dump()["state_map"]
-            await db.settings.update_one({"id": "user"}, {"$set": {"state_map": fresh}})
+        return
+    patch = {}
+    fresh_defaults = Settings().model_dump()
+    sm = current.get("state_map") or {}
+    legacy = {v for v in sm.values() if v}
+    needs_sm_refresh = (
+        not any(sm.values())
+        or "builtin-pixel-zombie" in legacy
+        or any(k not in sm for k in fresh_defaults["state_map"].keys())
+    )
+    if needs_sm_refresh:
+        merged = dict(fresh_defaults["state_map"])
+        for k, v in sm.items():
+            if v and v != "builtin-pixel-zombie":
+                merged[k] = v
+        patch["state_map"] = merged
+    for k in ("cursor_theme", "cursor_size", "show_in_tray",
+              "click_flash", "afk_timeout_sec", "reduce_motion"):
+        if k not in current:
+            patch[k] = fresh_defaults[k]
+    if patch:
+        await db.settings.update_one({"id": "user"}, {"$set": patch})
 
 
 @app.on_event("shutdown")

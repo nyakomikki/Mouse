@@ -1,0 +1,41 @@
+{
+  "summary": "Full backend + frontend e2e validation of iteration 2 (10 blob variants, system tray, new settings fields, ambient media states). All 9 backend tests and all 11 frontend flows passed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_backend.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "MediaApp.playAudio() uses stale `mode`/`ambientState` inside setTimeout closure; logic still works because setAmbientState((prev)=>prev==='audio'?null:prev) is functional, but the `if (mode === 'audio' || ambientState === 'audio')` guard is effectively dead code (closure captures stale values). Harmless, but confusing.",
+    "rafVideoRef is assigned both setTimeout id and requestAnimationFrame id; cleanup only calls cancelAnimationFrame. When tab is hidden during video playback the scheduled setTimeout id leaks and is not cancelled. Low impact but worth cleaning up.",
+    "server.py startup_seed: sprite auto-refresh triggers a full delete_many({built_in:true}) + re-insert whenever the new 'builtin-blob-afk' id is missing. This is idempotent but wipes any user edits made to built-in rows (expected by design, but should be documented).",
+    "Settings model has no validation constraints (e.g. cursor_theme accepts arbitrary strings; sprite_size/afk_timeout_sec unbounded). Recommend Literal/ge-le validators."
+  ],
+  "updated_files": ["/app/backend/tests/test_backend.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% of verified flows"},
+  "test_credentials": "n/a",
+  "seed_data_creation": "none (TEST_ prefixed sprites created and deleted within tests)",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend now seeds 16 built-in sprites total (10 builtin-blob-* + 6 legacy creatures Tabby Cat/Lil Ghost/Pulse Star/Crimson Arrow/X-Burst/Minimize Pop). Settings defaults have state_map covering all 10 keys. Frontend has data-testid='system-tray' in top bar, 'window-header-{app}' / 'window-close-{app}' / 'window-minimize-{app}' / 'window-resize-{app}' naming for windows, and 'dock-{app}' for dock launchers. Note: there is no 'dock-readme' button — readme opens on boot as the default window. Transient states (minimize/close/drag-pulse) last only a few hundred ms, so sampling state-indicator >500ms after click may miss them; drag/resize states remain while mouse is held.",
+  "verified_flows": [
+    "GET /api/sprites returns all 10 builtin-blob-* ids with base64 PNG frames",
+    "GET /api/settings returns new fields (cursor_theme=zombie, cursor_size=md, show_in_tray=true, click_flash=false, afk_timeout_sec=30, reduce_motion=false) + 10-key state_map",
+    "PUT /api/settings accepts partial updates for all 6 new fields and persists them",
+    "PUT /api/settings partial state_map updates preserve all 10 keys",
+    "POST /api/sprites/seed returns 16 defaults",
+    "Built-in sprite deletion rejected (400)",
+    "system-tray chip visible in top bar, click opens Settings singleton",
+    "cursor-theme-select -> 'classic' swaps desktop-root class zombie-cursor -> classic-cursor",
+    "setting-tray toggle hides/shows system-tray chip",
+    "Media app play-music-btn -> state:music; play-video-btn -> state:video; play-audio-btn -> state:audio (briefly); media-stop-btn clears ambient back to idle",
+    "Playground ambient-afk toggles state:afk",
+    "Dragging README header while ambient=music yields state:drag (user gesture wins over ambient)"
+  ]
+}
