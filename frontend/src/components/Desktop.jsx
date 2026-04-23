@@ -8,8 +8,12 @@ import SettingsApp from "./apps/SettingsApp";
 import SpriteEditorApp from "./apps/SpriteEditorApp";
 import MediaApp from "./apps/MediaApp";
 import { ReadmeApp, NotepadApp, FilesApp, PlaygroundApp } from "./apps/MiniApps";
-import { fetchSprites, fetchSettings, updateSettings } from "../lib/api";
+import {
+  fetchSprites, fetchSettings, updateSettings,
+  importSpriteFromObject, parseSpriteFromHash, clearShareHash,
+} from "../lib/api";
 import { Toaster } from "./ui/sonner";
+import { toast } from "sonner";
 
 function DesktopInner() {
   const [sprites, setSprites] = useState([]);
@@ -31,6 +35,20 @@ function DesktopInner() {
     (async () => {
       await refreshSprites();
       try { setSettings(await fetchSettings()); } catch { /* keep defaults */ }
+
+      // Handle incoming share-link imports (#import=...)
+      const payload = parseSpriteFromHash();
+      if (payload) {
+        try {
+          const created = await importSpriteFromObject(payload);
+          await refreshSprites();
+          toast.success(`Imported "${created.name}" to your library`);
+        } catch (e) {
+          toast.error(`Import failed: ${e.message || e}`);
+        } finally {
+          clearShareHash();
+        }
+      }
     })();
   }, []);
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Pencil, Eraser, PaintBucket, Pipette, Trash2, Copy, Plus,
-  Play, Pause, Save, Eye, EyeOff, SquarePlus, Download
+  Play, Pause, Save, Eye, EyeOff, SquarePlus, Download, Upload, Share2
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -10,7 +10,10 @@ import { Slider } from "../ui/slider";
 import { Switch } from "../ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { toast } from "sonner";
-import { createSprite, updateSprite, deleteSprite } from "../../lib/api";
+import {
+  createSprite, updateSprite, deleteSprite,
+  exportSprite, importSpriteFromObject, spriteShareLink,
+} from "../../lib/api";
 
 const DEFAULT_W = 32;
 const DEFAULT_H = 32;
@@ -267,6 +270,58 @@ export default function SpriteEditorApp({ sprites, onSpritesRefresh, activeSprit
     }
   };
 
+  // ---- Export / Import / Share ------------------------------------
+  const exportCurrent = () => {
+    const dataFrames = frames.map((f) => ({ data: frameToDataURL(f, width, height, 2) }));
+    const json = exportSprite({ name, width, height, fps, loop, tags, frames: dataFrames });
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(name || "sprite").replace(/\s+/g, "-")}.mfpup.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast.success("Exported");
+  };
+
+  const importFromFile = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.onchange = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const obj = JSON.parse(text);
+        const created = await importSpriteFromObject(obj);
+        toast.success(`Imported "${created.name}"`);
+        onSpritesRefresh?.();
+        loadSprite(created);
+      } catch (err) {
+        toast.error(`Import failed: ${err.message || err}`);
+      }
+    };
+    input.click();
+  };
+
+  const [shareLink, setShareLink] = useState(null);
+  const sharePup = async () => {
+    const dataFrames = frames.map((f) => ({ data: frameToDataURL(f, width, height, 2) }));
+    const link = spriteShareLink({ name, width, height, fps, loop, tags, frames: dataFrames });
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success("Share link copied to clipboard!", {
+        description: "Anyone who opens it can import your pup.",
+      });
+    } catch (e) {
+      setShareLink(link);
+      toast.info("Clipboard blocked — link below", {
+        description: "Select & copy it manually.",
+      });
+    }
+  };
+
   const newSprite = () => {
     setLoadedId(null);
     setName("Untitled Sprite");
@@ -295,6 +350,25 @@ export default function SpriteEditorApp({ sprites, onSpritesRefresh, activeSprit
 
   return (
     <div className="h-full w-full flex flex-col bg-[#0A0A0A] text-[#FAFAFA]" data-testid="sprite-editor">
+      {shareLink && (
+        <div className="border-b border-[#6fa04f] bg-[#0f1a08] px-4 py-3 flex items-center gap-2">
+          <Share2 size={14} className="text-[#6fa04f] shrink-0" />
+          <Input
+            data-testid="share-link-input"
+            readOnly
+            value={shareLink}
+            onFocus={(e) => e.target.select()}
+            className="h-8 flex-1 rounded-none bg-[#0A0A0A] border-[#2E2E2E] font-mono text-xs text-[#6fa04f]"
+          />
+          <Button
+            data-testid="share-link-close"
+            size="sm"
+            variant="outline"
+            onClick={() => setShareLink(null)}
+            className="h-8 rounded-none border-[#2E2E2E] bg-transparent hover:bg-[#1A1A1A]"
+          >Close</Button>
+        </div>
+      )}
       {/* Header toolbar */}
       <div className="h-12 border-b border-[#2E2E2E] flex items-center px-3 gap-2 bg-[#111111]">
         <Input
@@ -307,6 +381,15 @@ export default function SpriteEditorApp({ sprites, onSpritesRefresh, activeSprit
         <div className="flex-1" />
         <Button data-testid="new-sprite-btn" onClick={newSprite} variant="outline" className="h-8 rounded-none border-[#2E2E2E] bg-transparent hover:bg-[#1A1A1A] hover:border-[#FAFAFA]">
           <SquarePlus size={14} className="mr-1" /> New
+        </Button>
+        <Button data-testid="import-sprite-btn" onClick={importFromFile} variant="outline" className="h-8 rounded-none border-[#2E2E2E] bg-transparent hover:bg-[#1A1A1A] hover:border-[#FAFAFA]" title="Import .mfpup.json file">
+          <Upload size={14} className="mr-1" /> Import
+        </Button>
+        <Button data-testid="export-sprite-btn" onClick={exportCurrent} variant="outline" className="h-8 rounded-none border-[#2E2E2E] bg-transparent hover:bg-[#1A1A1A] hover:border-[#FAFAFA]" title="Download as .mfpup.json">
+          <Download size={14} className="mr-1" /> Export
+        </Button>
+        <Button data-testid="share-sprite-btn" onClick={sharePup} variant="outline" className="h-8 rounded-none border-[#6fa04f] bg-transparent text-[#6fa04f] hover:bg-[#0f1a08] hover:text-[#8fc06a]" title="Copy shareable link">
+          <Share2 size={14} className="mr-1" /> Share your pup
         </Button>
         <Button data-testid="save-sprite-btn" onClick={saveSprite} className="h-8 rounded-none bg-[#FAFAFA] text-[#0A0A0A] hover:bg-[#d4d4d8]">
           <Save size={14} className="mr-1" /> Save

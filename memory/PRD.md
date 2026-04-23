@@ -35,3 +35,19 @@
 - P2 · Theme gallery (swap between puppy, zombie-blob, cat, ghost with one click).
 - P3 · Community sprite sharing (share-link, import from URL).
 - P3 · Multi-monitor support for the overlay window.
+
+## 2026-04-23 update · 100% offline persistence + share-your-pup
+- Dumped all 16 built-in sprites from backend → `/app/frontend/src/lib/builtinSprites.json` (bundled static asset).
+- Rewrote `/app/frontend/src/lib/storage.js` as a localStorage adapter with the exact same function surface as the previous axios-backed `api.js`. Handles seeding, migration, user-vs-builtin preservation.
+- `/app/frontend/src/lib/api.js` now re-exports from storage.js — zero other files needed to change.
+- **Sprite Editor** gained three new buttons: **Import** (.mfpup.json file upload), **Export** (downloads .mfpup.json), **Share your pup** (copies a `#import=<base64>` URL; falls back to inline textarea if clipboard is blocked).
+- **Desktop.jsx** handles incoming share-link imports on app load (`parseSpriteFromHash` → `importSpriteFromObject` → clean URL).
+- Verified end-to-end: **zero** `/api/` network calls during load or interaction; share-link round-trip imports a custom sprite successfully.
+
+## Shipping plan (Gumroad / itch.io)
+- P0 · Windows `.exe` via `cd electron && yarn install && yarn dist` — now fully offline with the localStorage swap.
+- P0 · Price: $3-5 "Pixel Pets for your desktop" on Gumroad + itch.io.
+- P1 · Mac build (Electron multi-platform build) for upsell.
+- P1 · Code-signing cert to remove SmartScreen warning ($80-300/yr).
+- P1 · Landing page: GIF of chewing + share-link demo + itch embed widget.
+- P2 · Starter sprite pack (20-30 pups/pets) as an optional upsell.
